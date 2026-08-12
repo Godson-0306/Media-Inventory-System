@@ -1,0 +1,114 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+
+type Mode = "login" | "register";
+
+export function AuthPanel() {
+  const router = useRouter();
+  const [mode, setMode] = useState<Mode>("register");
+  const [loading, setLoading] = useState(false);
+  const [organizationName, setOrganizationName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  async function onSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      const path = mode === "register" ? "/api/auth/register" : "/api/auth/login";
+      const payload =
+        mode === "register"
+          ? { organizationName, email, password }
+          : { email, password };
+      const response = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        toast.error(data.error ?? "Request failed");
+        return;
+      }
+      toast.success(mode === "register" ? "Organization created" : "Signed in");
+      router.push("/workspace");
+      router.refresh();
+    } catch {
+      toast.error("Failed to fetch. Confirm the app and database are running.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
+      <div className="mb-6 grid grid-cols-2 rounded-lg bg-muted p-1">
+        {(["login", "register"] as const).map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setMode(item)}
+            className={cn(
+              "rounded-md py-2 text-sm font-medium capitalize",
+              mode === item
+                ? "bg-background text-foreground shadow"
+                : "text-muted-foreground",
+            )}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+      <form className="space-y-4" onSubmit={onSubmit}>
+        {mode === "register" ? (
+          <div>
+            <Label htmlFor="org">Organization Name</Label>
+            <Input
+              id="org"
+              value={organizationName}
+              onChange={(event) => setOrganizationName(event.target.value)}
+              placeholder="G-Tech"
+              required
+            />
+          </div>
+        ) : null}
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@organization.com"
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            minLength={mode === "register" ? 8 : 1}
+            required
+          />
+        </div>
+        <Button className="w-full" size="lg" disabled={loading}>
+          {loading
+            ? "Working..."
+            : mode === "register"
+              ? "Create organization"
+              : "Sign in"}
+        </Button>
+      </form>
+    </div>
+  );
+}

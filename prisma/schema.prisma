@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  OPERATOR
+}
+
+enum EquipmentCategory {
+  AUDIO
+  CABLES
+  CAMERAS
+  COMPUTING
+  DISPLAYS
+  LIGHTING
+  OTHERS
+}
+
+enum EquipmentStatus {
+  AVAILABLE
+  IN_USE
+  FAULTY
+  RENTED_OUT
+}
+
+enum RentalType {
+  IN
+  OUT
+}
+
+enum RentalStatus {
+  ACTIVE
+  RETURNED
+  CANCELLED
+}
+
+enum FaultStatus {
+  OPEN
+  IN_REPAIR
+  RESOLVED
+}
+
+enum ActivityAction {
+  REGISTER
+  LOGIN
+  ADMIN_UNLOCK
+  EQUIPMENT_CREATED
+  EQUIPMENT_UPDATED
+  SIGN_OUT
+  RETURN
+  FAULT_REPORTED
+  FAULT_UPDATED
+  RENTAL_CREATED
+  RENTAL_RETURNED
+  SAMPLE_SEEDED
+}
+
+model Organization {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  users       User[]
+  equipment   Equipment[]
+  rentals     Rental[]
+  faults      Fault[]
+  activities  Activity[]
+}
+
+model User {
+  id            String        @id @default(cuid())
+  orgId         String
+  org           Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  email         String
+  passwordHash  String
+  name          String
+  role          UserRole      @default(OWNER)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  activities    Activity[]
+  faults        Fault[]
+
+  @@unique([orgId, email])
+  @@index([email])
+}
+
+model Equipment {
+  id               String             @id @default(cuid())
+  orgId            String
+  org              Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name             String
+  serialNumber     String
+  brand            String
+  model            String
+  category         EquipmentCategory
+  purchaseDate     DateTime?
+  warrantyDate     DateTime?
+  conditionNotes   String             @default("")
+  status           EquipmentStatus    @default(AVAILABLE)
+  currentOperator  String?
+  useCount         Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  rentals          Rental[]
+  faults           Fault[]
+  activities       Activity[]
+
+  @@unique([orgId, serialNumber])
+}
+
+model Rental {
+  id            String         @id @default(cuid())
+  orgId         String
+  org           Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  equipmentId   String?
+  equipment     Equipment?     @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  type          RentalType
+  counterparty  String
+  startDate     DateTime
+  endDate       DateTime?
+  status        RentalStatus   @default(ACTIVE)
+  notes         String         @default("")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Fault {
+  id           String        @id @default(cuid())
+  orgId        String
+  org          Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  equipmentId  String
+  equipment    Equipment     @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  reporterId   String
+  reporter     User          @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  description  String
+  status       FaultStatus   @default(OPEN)
+  reportedAt   DateTime      @default(now())
+  resolvedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Activity {
+  id           String          @id @default(cuid())
+  orgId        String
+  org          Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  equipmentId  String?
+  equipment    Equipment?      @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  action       ActivityAction
+  details      Json?
+  createdAt    DateTime        @default(now())
+
+  @@index([orgId, createdAt])
+}

@@ -1,0 +1,25 @@
+databases:
+  - name: asset-ops-db
+    plan: free
+    databaseName: assetops
+    user: assetops
+
+services:
+  - type: web
+    name: asset-operations-platform
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: HOSTNAME
+        value: "0.0.0.0"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: asset-ops-db
+          property: connectionString
+      - key: AUTH_SECRET
+        sync: false
