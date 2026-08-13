@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getDashboardData } from "@/lib/queries";
+import { toEquipmentDTO } from "@/lib/mappers";
 import { RentalsAdmin } from "@/components/admin/rentals-admin";
 
 export const dynamic = "force-dynamic";
@@ -22,18 +23,7 @@ export default async function RentalsPage() {
         equipmentName: item.equipment?.name ?? null,
         equipmentId: item.equipmentId,
       }))}
-      equipment={data.equipment.map((item) => ({
-        id: item.id,
-        name: item.name,
-        serialNumber: item.serialNumber,
-        brand: item.brand,
-        model: item.model,
-        category: item.category,
-        status: item.status,
-        currentOperator: item.currentOperator,
-        useCount: item.useCount,
-        conditionNotes: item.conditionNotes,
-      }))}
+      equipment={data.equipment.map(toEquipmentDTO)}
     />
   );
 }

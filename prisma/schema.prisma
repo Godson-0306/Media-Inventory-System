@@ -1,9 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -23,10 +24,10 @@ enum EquipmentCategory {
 }
 
 enum EquipmentStatus {
-  AVAILABLE
-  IN_USE
+  ACTIVE
+  SIGNED_OUT
+  SIGNED_IN
   FAULTY
-  RENTED_OUT
 }
 
 enum RentalType {
@@ -53,12 +54,29 @@ enum ActivityAction {
   EQUIPMENT_CREATED
   EQUIPMENT_UPDATED
   SIGN_OUT
+  SIGN_IN
   RETURN
   FAULT_REPORTED
   FAULT_UPDATED
   RENTAL_CREATED
   RENTAL_RETURNED
   SAMPLE_SEEDED
+  REQUEST_CREATED
+  REQUEST_APPROVED
+  REQUEST_DECLINED
+  MEMBER_ADDED
+}
+
+enum RequestType {
+  SIGN_OUT
+  SIGN_IN
+  RENTAL_OUT
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
 }
 
 model Organization {
@@ -67,11 +85,13 @@ model Organization {
   slug        String      @unique
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  users       User[]
-  equipment   Equipment[]
-  rentals     Rental[]
-  faults      Fault[]
-  activities  Activity[]
+  users          User[]
+  equipment      Equipment[]
+  rentals        Rental[]
+  faults         Fault[]
+  activities     Activity[]
+  locationPings      LocationPing[]
+  operationRequests  OperationRequest[]
 }
 
 model User {
@@ -84,8 +104,12 @@ model User {
   role          UserRole      @default(OWNER)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  activities    Activity[]
-  faults        Fault[]
+  activities           Activity[]
+  faults               Fault[]
+  signedOutEquipment   Equipment[]         @relation("SignedOutBy")
+  requestedOperations  OperationRequest[]  @relation("RequestedBy")
+  reviewedOperations   OperationRequest[]  @relation("ReviewedBy")
+  operatedRequests     OperationRequest[]  @relation("OperatorOnRequest")
 
   @@unique([orgId, email])
   @@index([email])
@@ -103,16 +127,77 @@ model Equipment {
   purchaseDate     DateTime?
   warrantyDate     DateTime?
   conditionNotes   String             @default("")
-  status           EquipmentStatus    @default(AVAILABLE)
+  status           EquipmentStatus    @default(ACTIVE)
   currentOperator  String?
   useCount         Int                @default(0)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  rentals          Rental[]
-  faults           Fault[]
-  activities       Activity[]
+  signedOutAt        DateTime?
+  signedOutByUserId  String?
+  signedOutBy        User?              @relation("SignedOutBy", fields: [signedOutByUserId], references: [id], onDelete: SetNull)
+  locationLabel      String?
+  locationAddress    String?
+  latitude           Float?
+  longitude          Float?
+  liveLatitude       Float?
+  liveLongitude      Float?
+  liveAccuracy       Float?
+  liveUpdatedAt      DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  rentals            Rental[]
+  faults             Fault[]
+  activities         Activity[]
+  locationPings      LocationPing[]
+  operationRequests  OperationRequest[]
 
   @@unique([orgId, serialNumber])
+  @@index([signedOutByUserId])
+}
+
+model LocationPing {
+  id           String        @id @default(cuid())
+  orgId        String
+  org          Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  equipmentId  String
+  equipment    Equipment     @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  latitude     Float
+  longitude    Float
+  accuracy     Float?
+  createdAt    DateTime      @default(now())
+
+  @@index([equipmentId, createdAt])
+  @@index([orgId, createdAt])
+}
+
+model OperationRequest {
+  id                 String          @id @default(cuid())
+  orgId              String
+  org                Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  equipmentId        String
+  equipment          Equipment       @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  requesterId        String
+  requester          User            @relation("RequestedBy", fields: [requesterId], references: [id], onDelete: Cascade)
+  operatorUserId     String?
+  operator           User?           @relation("OperatorOnRequest", fields: [operatorUserId], references: [id], onDelete: SetNull)
+  type               RequestType
+  status             RequestStatus   @default(PENDING)
+  operatorName       String
+  notes              String          @default("")
+  locationLabel      String?
+  locationAddress    String?
+  latitude           Float?
+  longitude          Float?
+  counterparty       String?
+  startDate          DateTime?
+  endDate            DateTime?
+  reviewedByUserId   String?
+  reviewedBy         User?           @relation("ReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt         DateTime?
+  declineReason      String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([orgId, status, createdAt])
+  @@index([equipmentId, status])
 }
 
 model Rental {

@@ -94,3 +94,12 @@ export async function requireSession() {
   }
   return session;
 }
+
+export async function requireAdminUnlocked() {
+  const session = await requireSession();
+  const unlocked = await isAdminUnlocked(session.userId);
+  if (!unlocked) {
+    return { error: "Unlock admin to accept or decline requests" as const, session: null };
+  }
+  return { error: null, session };
+}

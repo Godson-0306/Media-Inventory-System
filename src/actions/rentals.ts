@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
 import { rentalSchema } from "@/lib/validations";
+import { CLEAR_LIVE_LOCATION } from "@/lib/constants";
 
 function refresh() {
   revalidatePath("/workspace");
@@ -20,14 +21,14 @@ export async function createRental(input: unknown) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid rental details" };
   }
 
-  let equipmentId = parsed.data.equipmentId || null;
+  const equipmentId = parsed.data.equipmentId || null;
   if (equipmentId) {
     const item = await prisma.equipment.findFirst({
       where: { id: equipmentId, orgId: session.orgId },
     });
     if (!item) return { error: "Equipment not found" };
-    if (parsed.data.type === "OUT" && item.status !== "AVAILABLE") {
-      return { error: "Only available equipment can be sent out on rental" };
+    if (parsed.data.type === "OUT" && item.status !== "ACTIVE" && item.status !== "SIGNED_IN") {
+      return { error: "Only active or signed-in equipment can be sent out on rental" };
     }
   }
 
@@ -46,7 +47,16 @@ export async function createRental(input: unknown) {
   if (equipmentId && parsed.data.type === "OUT") {
     await prisma.equipment.update({
       where: { id: equipmentId },
-      data: { status: "RENTED_OUT", currentOperator: parsed.data.counterparty },
+      data: {
+        status: "SIGNED_OUT",
+        currentOperator: parsed.data.counterparty,
+        signedOutAt: new Date(),
+        signedOutByUserId: session.userId,
+        liveLatitude: null,
+        liveLongitude: null,
+        liveAccuracy: null,
+        liveUpdatedAt: null,
+      },
     });
   }
 
@@ -82,7 +92,15 @@ export async function returnRental(rentalId: string) {
   if (rental.equipmentId && rental.type === "OUT") {
     await prisma.equipment.update({
       where: { id: rental.equipmentId },
-      data: { status: "AVAILABLE", currentOperator: null },
+      data: {
+        status: "SIGNED_IN",
+        currentOperator: null,
+        signedOutAt: null,
+        locationLabel: "Storage / cage",
+        latitude: null,
+        longitude: null,
+        ...CLEAR_LIVE_LOCATION,
+      },
     });
   }
   await prisma.activity.create({

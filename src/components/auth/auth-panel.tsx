@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,17 +15,18 @@ export function AuthPanel() {
   const [mode, setMode] = useState<Mode>("register");
   const [loading, setLoading] = useState(false);
   const [organizationName, setOrganizationName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  async function onSubmit(event: React.FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     try {
       const path = mode === "register" ? "/api/auth/register" : "/api/auth/login";
       const payload =
         mode === "register"
-          ? { organizationName, email, password }
+          ? { organizationName, ownerName, email, password }
           : { email, password };
       const response = await fetch(path, {
         method: "POST",
@@ -68,16 +69,28 @@ export function AuthPanel() {
       </div>
       <form className="space-y-4" onSubmit={onSubmit}>
         {mode === "register" ? (
-          <div>
-            <Label htmlFor="org">Organization Name</Label>
-            <Input
-              id="org"
-              value={organizationName}
-              onChange={(event) => setOrganizationName(event.target.value)}
-              placeholder="G-Tech"
-              required
-            />
-          </div>
+          <>
+            <div>
+              <Label htmlFor="org">Organization Name</Label>
+              <Input
+                id="org"
+                value={organizationName}
+                onChange={(event) => setOrganizationName(event.target.value)}
+                placeholder="G-Tech"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="owner">Your name</Label>
+              <Input
+                id="owner"
+                value={ownerName}
+                onChange={(event) => setOwnerName(event.target.value)}
+                placeholder="Godson"
+                required
+              />
+            </div>
+          </>
         ) : null}
         <div>
           <Label htmlFor="email">Email</Label>

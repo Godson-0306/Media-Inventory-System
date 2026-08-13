@@ -1,22 +1,33 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
-import { faultSchema, operationSchema } from "@/lib/validations";
+import {
+  CLEAR_LIVE_LOCATION,
+  HOME_LOCATION,
+  LIVE_PING_MIN_INTERVAL_MS,
+  LIVE_PING_TRAIL_LIMIT,
+} from "@/lib/constants";
+import { formatDuration } from "@/lib/utils";
+import {
+  faultSchema,
+  liveLocationSchema,
+  operationSchema,
+  signOutSchema,
+} from "@/lib/validations";
+import type { Equipment } from "@prisma/client";
+import { refresh } from "@/lib/revalidate";
+import { resolveOrgMember } from "@/lib/members";
 
-function refresh() {
-  revalidatePath("/workspace");
-  revalidatePath("/admin");
-  revalidatePath("/admin/equipment");
-  revalidatePath("/admin/faults");
-  revalidatePath("/admin/history");
-  revalidatePath("/admin/rentals");
+async function pendingRequestFor(orgId: string, equipmentId: string) {
+  return prisma.operationRequest.findFirst({
+    where: { orgId, equipmentId, status: "PENDING" },
+  });
 }
 
 export async function signOutEquipment(input: unknown) {
   const session = await requireSession();
-  const parsed = operationSchema.safeParse(input);
+  const parsed = signOutSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
   }
@@ -25,16 +36,29 @@ export async function signOutEquipment(input: unknown) {
     where: { id: parsed.data.equipmentId, orgId: session.orgId },
   });
   if (!item) return { error: "Equipment not found" };
-  if (item.status !== "AVAILABLE") {
-    return { error: "Only available equipment can be signed out" };
+  if (item.status !== "ACTIVE" && item.status !== "SIGNED_IN") {
+    return { error: "Only active or signed-in equipment can be requested for sign-out" };
+  }
+  if (await pendingRequestFor(session.orgId, item.id)) {
+    return { error: "This asset already has a pending request" };
   }
 
-  await prisma.equipment.update({
-    where: { id: item.id },
+  const operator = await resolveOrgMember(session.orgId, parsed.data.operatorUserId);
+  if (operator.error || !operator.member) return { error: operator.error ?? "Select a member" };
+
+  await prisma.operationRequest.create({
     data: {
-      status: "IN_USE",
-      currentOperator: parsed.data.operatorName,
-      useCount: { increment: 1 },
+      orgId: session.orgId,
+      equipmentId: item.id,
+      requesterId: session.userId,
+      operatorUserId: operator.member.id,
+      type: "SIGN_OUT",
+      operatorName: operator.member.name,
+      notes: parsed.data.notes ?? "",
+      locationLabel: parsed.data.locationLabel,
+      locationAddress: parsed.data.locationAddress ?? "",
+      latitude: parsed.data.latitude,
+      longitude: parsed.data.longitude,
     },
   });
   await prisma.activity.create({
@@ -42,18 +66,24 @@ export async function signOutEquipment(input: unknown) {
       orgId: session.orgId,
       userId: session.userId,
       equipmentId: item.id,
-      action: "SIGN_OUT",
+      action: "REQUEST_CREATED",
       details: {
-        operatorName: parsed.data.operatorName,
+        requestType: "SIGN_OUT",
+        operatorName: operator.member.name,
+        operatorUserId: operator.member.id,
         notes: parsed.data.notes ?? "",
+        place: parsed.data.locationLabel,
+        address: parsed.data.locationAddress ?? "",
+        lat: parsed.data.latitude,
+        lng: parsed.data.longitude,
       },
     },
   });
-  refresh();
+  refresh(item.id);
   return { ok: true };
 }
 
-export async function returnEquipment(input: unknown) {
+export async function signInEquipment(input: unknown) {
   const session = await requireSession();
   const parsed = operationSchema.safeParse(input);
   if (!parsed.success) {
@@ -64,28 +94,179 @@ export async function returnEquipment(input: unknown) {
     where: { id: parsed.data.equipmentId, orgId: session.orgId },
   });
   if (!item) return { error: "Equipment not found" };
-  if (item.status !== "IN_USE" && item.status !== "RENTED_OUT") {
-    return { error: "This asset is not currently out" };
+  if (item.status !== "SIGNED_OUT") {
+    return { error: "This asset is not currently signed out" };
+  }
+  if (await pendingRequestFor(session.orgId, item.id)) {
+    return { error: "This asset already has a pending request" };
   }
 
-  await prisma.equipment.update({
-    where: { id: item.id },
-    data: { status: "AVAILABLE", currentOperator: null },
+  const operator = await resolveOrgMember(session.orgId, parsed.data.operatorUserId);
+  if (operator.error || !operator.member) return { error: operator.error ?? "Select a member" };
+
+  await prisma.operationRequest.create({
+    data: {
+      orgId: session.orgId,
+      equipmentId: item.id,
+      requesterId: session.userId,
+      operatorUserId: operator.member.id,
+      type: "SIGN_IN",
+      operatorName: operator.member.name,
+      notes: parsed.data.notes ?? "",
+    },
   });
   await prisma.activity.create({
     data: {
       orgId: session.orgId,
       userId: session.userId,
       equipmentId: item.id,
-      action: "RETURN",
+      action: "REQUEST_CREATED",
       details: {
-        operatorName: parsed.data.operatorName,
+        requestType: "SIGN_IN",
+        operatorName: operator.member.name,
+        operatorUserId: operator.member.id,
         notes: parsed.data.notes ?? "",
       },
     },
   });
-  refresh();
+  refresh(item.id);
   return { ok: true };
+}
+
+export async function applyApprovedSignOut(input: {
+  orgId: string;
+  actorUserId: string;
+  operatorUserId: string;
+  item: Equipment;
+  operatorName: string;
+  notes: string;
+  locationLabel: string;
+  locationAddress: string;
+  latitude: number;
+  longitude: number;
+}) {
+  const now = new Date();
+  await prisma.equipment.update({
+    where: { id: input.item.id },
+    data: {
+      status: "SIGNED_OUT",
+      currentOperator: input.operatorName,
+      useCount: { increment: 1 },
+      signedOutAt: now,
+      locationLabel: input.locationLabel,
+      locationAddress: input.locationAddress,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      ...CLEAR_LIVE_LOCATION,
+      signedOutByUserId: input.operatorUserId,
+    },
+  });
+  await prisma.activity.create({
+    data: {
+      orgId: input.orgId,
+      userId: input.actorUserId,
+      equipmentId: input.item.id,
+      action: "SIGN_OUT",
+      details: {
+        operatorName: input.operatorName,
+        notes: input.notes,
+        place: input.locationLabel,
+        address: input.locationAddress,
+        lat: input.latitude,
+        lng: input.longitude,
+      },
+    },
+  });
+}
+
+export async function applyApprovedSignIn(input: {
+  orgId: string;
+  actorUserId: string;
+  item: Equipment;
+  operatorName: string;
+  notes: string;
+}) {
+  const now = new Date();
+  const duration = input.item.signedOutAt
+    ? formatDuration(input.item.signedOutAt, now)
+    : null;
+
+  await prisma.equipment.update({
+    where: { id: input.item.id },
+    data: {
+      status: "SIGNED_IN",
+      currentOperator: null,
+      signedOutAt: null,
+      locationLabel: HOME_LOCATION.label,
+      locationAddress: HOME_LOCATION.address,
+      latitude: null,
+      longitude: null,
+      ...CLEAR_LIVE_LOCATION,
+    },
+  });
+  await prisma.activity.create({
+    data: {
+      orgId: input.orgId,
+      userId: input.actorUserId,
+      equipmentId: input.item.id,
+      action: "SIGN_IN",
+      details: {
+        operatorName: input.operatorName,
+        notes: input.notes,
+        place: HOME_LOCATION.label,
+        duration,
+      },
+    },
+  });
+}
+
+export async function applyApprovedRentalOut(input: {
+  orgId: string;
+  actorUserId: string;
+  operatorUserId: string;
+  item: Equipment;
+  operatorName: string;
+  notes: string;
+  counterparty: string;
+  startDate: Date;
+}) {
+  const rental = await prisma.rental.create({
+    data: {
+      orgId: input.orgId,
+      equipmentId: input.item.id,
+      type: "OUT",
+      counterparty: input.counterparty,
+      startDate: input.startDate,
+      notes: input.notes,
+    },
+  });
+  await prisma.equipment.update({
+    where: { id: input.item.id },
+    data: {
+      status: "SIGNED_OUT",
+      currentOperator: input.operatorName,
+      signedOutAt: new Date(),
+      signedOutByUserId: input.operatorUserId,
+      liveLatitude: null,
+      liveLongitude: null,
+      liveAccuracy: null,
+      liveUpdatedAt: null,
+    },
+  });
+  await prisma.activity.create({
+    data: {
+      orgId: input.orgId,
+      userId: input.actorUserId,
+      equipmentId: input.item.id,
+      action: "RENTAL_CREATED",
+      details: {
+        type: "OUT",
+        counterparty: input.counterparty,
+        rentalId: rental.id,
+        operatorName: input.operatorName,
+      },
+    },
+  });
 }
 
 export async function reportFault(input: unknown) {
@@ -100,10 +281,18 @@ export async function reportFault(input: unknown) {
   });
   if (!item) return { error: "Equipment not found" };
 
+  const operator = await resolveOrgMember(session.orgId, parsed.data.operatorUserId);
+  if (operator.error || !operator.member) return { error: operator.error ?? "Select a member" };
+
   await prisma.$transaction([
     prisma.equipment.update({
       where: { id: item.id },
-      data: { status: "FAULTY", currentOperator: parsed.data.operatorName },
+      data: {
+        status: "FAULTY",
+        currentOperator: operator.member.name,
+        signedOutAt: null,
+        ...CLEAR_LIVE_LOCATION,
+      },
     }),
     prisma.fault.create({
       data: {
@@ -120,12 +309,74 @@ export async function reportFault(input: unknown) {
         equipmentId: item.id,
         action: "FAULT_REPORTED",
         details: {
-          operatorName: parsed.data.operatorName,
+          operatorName: operator.member.name,
+          operatorUserId: operator.member.id,
           description: parsed.data.description,
         },
       },
     }),
   ]);
-  refresh();
+  refresh(item.id);
+  return { ok: true };
+}
+
+export async function updateLiveLocation(input: unknown) {
+  const session = await requireSession();
+  const parsed = liveLocationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid location" };
+  }
+
+  const item = await prisma.equipment.findFirst({
+    where: { id: parsed.data.equipmentId, orgId: session.orgId },
+  });
+  if (!item) return { error: "Equipment not found" };
+  if (item.status !== "SIGNED_OUT") {
+    return { error: "Live location is only shared while this asset is signed out" };
+  }
+  if (item.signedOutByUserId !== session.userId) {
+    return { error: "Only the operator who signed this out can share live location" };
+  }
+
+  const now = new Date();
+  if (
+    item.liveUpdatedAt &&
+    now.getTime() - item.liveUpdatedAt.getTime() < LIVE_PING_MIN_INTERVAL_MS
+  ) {
+    return { ok: true, skipped: true };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.equipment.update({
+      where: { id: item.id },
+      data: {
+        liveLatitude: parsed.data.latitude,
+        liveLongitude: parsed.data.longitude,
+        liveAccuracy: parsed.data.accuracy ?? null,
+        liveUpdatedAt: now,
+      },
+    });
+    await tx.locationPing.create({
+      data: {
+        orgId: session.orgId,
+        equipmentId: item.id,
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
+        accuracy: parsed.data.accuracy ?? null,
+      },
+    });
+    const extra = await tx.locationPing.findMany({
+      where: { equipmentId: item.id },
+      orderBy: { createdAt: "desc" },
+      skip: LIVE_PING_TRAIL_LIMIT,
+      select: { id: true },
+    });
+    if (extra.length > 0) {
+      await tx.locationPing.deleteMany({
+        where: { id: { in: extra.map((ping) => ping.id) } },
+      });
+    }
+  });
+
   return { ok: true };
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { FaultStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
+import { CLEAR_LIVE_LOCATION } from "@/lib/constants";
 
 function refresh() {
   revalidatePath("/workspace");
@@ -31,7 +32,15 @@ export async function updateFaultStatus(faultId: string, status: FaultStatus) {
   if (status === "RESOLVED") {
     await prisma.equipment.update({
       where: { id: fault.equipmentId },
-      data: { status: "AVAILABLE", currentOperator: null },
+      data: {
+        status: "ACTIVE",
+        currentOperator: null,
+        signedOutAt: null,
+        locationLabel: "Storage / cage",
+        latitude: null,
+        longitude: null,
+        ...CLEAR_LIVE_LOCATION,
+      },
     });
   } else if (status === "IN_REPAIR") {
     await prisma.equipment.update({

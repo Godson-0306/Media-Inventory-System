@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { createEquipment } from "@/actions/equipment";
@@ -12,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/empty-state";
 import { CATEGORIES } from "@/lib/constants";
+import { statusLabel } from "@/lib/utils";
 import type { EquipmentDTO } from "@/lib/types";
 
 export function EquipmentAdmin({ equipment }: { equipment: EquipmentDTO[] }) {
@@ -73,22 +75,24 @@ export function EquipmentAdmin({ equipment }: { equipment: EquipmentDTO[] }) {
           ) : (
             <div className="space-y-2">
               {equipment.map((item) => (
-                <div
+                <Link
                   key={item.id}
-                  className="rounded-lg border border-border px-3 py-3"
+                  href={`/admin/equipment/${item.id}`}
+                  className="block rounded-lg border border-border px-3 py-3 hover:bg-muted/40"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">{item.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {item.serialNumber} · {item.brand} {item.model}
+                        {item.locationLabel ? ` · ${item.locationLabel}` : ""}
                       </p>
                     </div>
                     <span className="text-xs uppercase text-primary">
-                      {item.status.replace("_", " ")}
+                      {statusLabel(item.status)}
                     </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

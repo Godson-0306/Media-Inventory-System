@@ -9,11 +9,27 @@ export const CATEGORIES = [
 ] as const;
 
 export const STATUSES = [
-  { value: "AVAILABLE", label: "Available" },
-  { value: "IN_USE", label: "In-use" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "SIGNED_OUT", label: "Signed out" },
+  { value: "SIGNED_IN", label: "Signed in" },
   { value: "FAULTY", label: "Faulty" },
-  { value: "RENTED_OUT", label: "Rented out" },
 ] as const;
+
+export const HOME_LOCATION = {
+  label: "Storage / cage",
+  address: "",
+} as const;
+
+export const CLEAR_LIVE_LOCATION = {
+  signedOutByUserId: null,
+  liveLatitude: null,
+  liveLongitude: null,
+  liveAccuracy: null,
+  liveUpdatedAt: null,
+} as const;
+
+export const LIVE_PING_MIN_INTERVAL_MS = 5000;
+export const LIVE_PING_TRAIL_LIMIT = 200;
 
 export const SESSION_COOKIE = "aop_session";
 export const ADMIN_COOKIE = "aop_admin";

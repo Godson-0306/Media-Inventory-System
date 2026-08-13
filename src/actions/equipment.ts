@@ -31,6 +31,7 @@ export async function createEquipment(input: unknown) {
         purchaseDate: parseOptionalDate(parsed.data.purchaseDate),
         warrantyDate: parseOptionalDate(parsed.data.warrantyDate),
         conditionNotes: parsed.data.conditionNotes ?? "",
+        locationLabel: "Storage / cage",
       },
     });
     await prisma.activity.create({

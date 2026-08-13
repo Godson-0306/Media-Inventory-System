@@ -78,6 +78,22 @@ const SAMPLE_KIT: Array<{
     category: "COMPUTING",
     conditionNotes: "Playback machine, ProPresenter installed.",
   },
+  {
+    name: "Manfrotto 504X Tripod",
+    serialNumber: "MF-504X-22",
+    brand: "Manfrotto",
+    model: "504X",
+    category: "OTHERS",
+    conditionNotes: "Fluid head, mid-level spreader, labeled legs.",
+  },
+  {
+    name: "Blackmagic ATEM Mini Extreme",
+    serialNumber: "ATEM-EXT-03",
+    brand: "Blackmagic",
+    model: "ATEM Mini Extreme",
+    category: "COMPUTING",
+    conditionNotes: "Switching and ISO record, USB-C capture to playback Mac.",
+  },
 ];
 
 export async function seedSampleKit() {
@@ -91,6 +107,7 @@ export async function seedSampleKit() {
     data: SAMPLE_KIT.map((item) => ({
       ...item,
       orgId: session.orgId,
+      locationLabel: "Storage / cage",
     })),
   });
   await prisma.activity.create({

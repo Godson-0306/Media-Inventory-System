@@ -18,26 +18,35 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/empty-state";
 import { IssuePanel } from "@/components/issue-panel";
-import { signOutEquipment, returnEquipment, reportFault } from "@/actions/operations";
-import { createRental } from "@/actions/rentals";
+import { signOutEquipment, signInEquipment, reportFault } from "@/actions/operations";
+import { cancelOperationRequest, requestRentalOut } from "@/actions/requests";
 import { changePassword, seedSampleKit } from "@/actions/settings";
+import { PlacePicker } from "@/components/maps/place-picker";
+import { LiveTracker } from "@/components/maps/live-tracker";
+import { useRefreshWhile } from "@/hooks/use-refresh-while";
 import { CATEGORIES, STATUSES } from "@/lib/constants";
-import { actionLabel, cn, formatDateTime } from "@/lib/utils";
-import type { ActivityDTO, Counts, EquipmentDTO } from "@/lib/types";
+import { actionLabel, cn, formatDateTime, formatRelativeTime, requestTypeLabel, statusLabel } from "@/lib/utils";
+import type { ActivityDTO, Counts, EquipmentDTO, MemberDTO, OperationRequestDTO, PlaceHit } from "@/lib/types";
 
 type Props = {
   orgName: string;
   userName: string;
+  userId: string;
   equipment: EquipmentDTO[];
   activities: ActivityDTO[];
+  pendingRequests: OperationRequestDTO[];
+  members: MemberDTO[];
   counts: Counts;
 };
 
 export function WorkspaceConsole({
   orgName,
   userName,
+  userId,
   equipment,
   activities,
+  pendingRequests,
+  members,
   counts,
 }: Props) {
   const router = useRouter();
@@ -47,15 +56,28 @@ export function WorkspaceConsole({
   const [status, setStatus] = useState("ALL");
   const [sort, setSort] = useState("name");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [operatorName, setOperatorName] = useState(userName);
+  const [operatorUserId, setOperatorUserId] = useState(userId);
   const [notes, setNotes] = useState("");
   const [faultDescription, setFaultDescription] = useState("");
   const [counterparty, setCounterparty] = useState("");
+  const [destination, setDestination] = useState<PlaceHit | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
   const selected = equipment.find((item) => item.id === selectedId) ?? null;
+  const pendingByEquipment = useMemo(() => {
+    const map = new Map<string, OperationRequestDTO>();
+    for (const request of pendingRequests) {
+      if (request.status === "PENDING") map.set(request.equipmentId, request);
+    }
+    return map;
+  }, [pendingRequests]);
+  const selectedPending = selected ? pendingByEquipment.get(selected.id) ?? null : null;
+  useRefreshWhile(
+    equipment.some((item) => item.status === "SIGNED_OUT") ||
+      pendingRequests.some((item) => item.status === "PENDING"),
+  );
 
   const filtered = useMemo(() => {
     const list = equipment.filter((item) => {
@@ -89,11 +111,13 @@ export function WorkspaceConsole({
       setNotes("");
       setFaultDescription("");
       setCounterparty("");
+      setDestination(null);
     });
   }
 
   return (
     <div className="min-h-screen bg-background">
+      <LiveTracker userId={userId} equipment={equipment} />
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
           <Logo />
@@ -234,7 +258,14 @@ export function WorkspaceConsole({
                 >
                   <p className="text-sm font-medium">{item.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {item.serialNumber} · {item.status.replace("_", " ")}
+                    {item.serialNumber} · {statusLabel(item.status)}
+                    {item.locationLabel ? ` · ${item.locationLabel}` : ""}
+                    {pendingByEquipment.get(item.id)
+                      ? ` · ${requestTypeLabel(pendingByEquipment.get(item.id)!.type)} requested`
+                      : ""}
+                    {item.status === "SIGNED_OUT" && item.liveUpdatedAt
+                      ? ` · Live · ${formatRelativeTime(item.liveUpdatedAt)}`
+                      : ""}
                   </p>
                 </button>
               ))
@@ -243,10 +274,11 @@ export function WorkspaceConsole({
         </Card>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             <Metric label="Total" value={counts.total} />
-            <Metric label="Available" value={counts.available} tone="ok" />
-            <Metric label="In-use" value={counts.inUse} tone="warn" />
+            <Metric label="Active" value={counts.active} tone="ok" />
+            <Metric label="Signed out" value={counts.signedOut} tone="warn" />
+            <Metric label="Signed in" value={counts.signedIn} />
             <Metric label="Faulty" value={counts.faulty} tone="bad" />
           </div>
           <Card className="p-5">
@@ -268,16 +300,37 @@ export function WorkspaceConsole({
                     {selected.brand} {selected.model} · {selected.serialNumber}
                   </p>
                   <p className="mt-2 text-xs uppercase tracking-wide text-primary">
-                    {selected.status.replace("_", " ")}
+                    {statusLabel(selected.status)}
+                    {selected.locationLabel ? ` · ${selected.locationLabel}` : ""}
+                    {selectedPending
+                      ? ` · ${requestTypeLabel(selectedPending.type)} requested`
+                      : ""}
+                    {selected.status === "SIGNED_OUT" && selected.liveUpdatedAt
+                      ? ` · Live · ${formatRelativeTime(selected.liveUpdatedAt)}`
+                      : ""}
                   </p>
+                  <button
+                    type="button"
+                    className="mt-3 text-sm text-primary hover:underline"
+                    onClick={() => router.push(`/workspace/equipment/${selected.id}`)}
+                  >
+                    Open life record
+                  </button>
                 </div>
                 <div>
-                  <Label htmlFor="operator">Operator attribution</Label>
-                  <Input
+                  <Label htmlFor="operator">Member taking this kit</Label>
+                  <Select
                     id="operator"
-                    value={operatorName}
-                    onChange={(event) => setOperatorName(event.target.value)}
-                  />
+                    value={operatorUserId}
+                    onChange={(event) => setOperatorUserId(event.target.value)}
+                  >
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name}
+                        {member.id === userId ? " (you)" : ""}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="notes">Notes</Label>
@@ -287,41 +340,79 @@ export function WorkspaceConsole({
                     onChange={(event) => setNotes(event.target.value)}
                   />
                 </div>
+                {!selectedPending && (selected.status === "ACTIVE" || selected.status === "SIGNED_IN") ? (
+                  <PlacePicker value={destination} onChange={setDestination} />
+                ) : null}
+                {selectedPending ? (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                    <p className="text-sm font-medium text-amber-200">
+                      {requestTypeLabel(selectedPending.type)} request waiting for admin
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Submitted by {selectedPending.requesterName}
+                      {selectedPending.operatorName
+                        ? ` · Member: ${selectedPending.operatorName}`
+                        : ""}
+                      {selectedPending.locationLabel ? ` · ${selectedPending.locationLabel}` : ""}
+                      {selectedPending.counterparty ? ` · ${selectedPending.counterparty}` : ""}
+                    </p>
+                    {selectedPending.requesterId === userId ? (
+                      <Button
+                        className="mt-3"
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() =>
+                          run(
+                            () => cancelOperationRequest(selectedPending.id),
+                            "Request cancelled",
+                          )
+                        }
+                      >
+                        Cancel request
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap gap-2">
-                  {selected.status === "AVAILABLE" ? (
+                  {!selectedPending && (selected.status === "ACTIVE" || selected.status === "SIGNED_IN") ? (
                     <Button
-                      disabled={pending}
+                      disabled={pending || !destination || !operatorUserId}
                       onClick={() =>
                         run(
                           () =>
                             signOutEquipment({
                               equipmentId: selected.id,
-                              operatorName,
+                              operatorUserId,
                               notes,
+                              locationLabel: destination?.label,
+                              locationAddress: destination?.address,
+                              latitude: destination?.latitude,
+                              longitude: destination?.longitude,
                             }),
-                          "Asset signed out",
+                          "Sign-out request sent",
                         )
                       }
                     >
-                      Sign out
+                      Request sign out
                     </Button>
                   ) : null}
-                  {selected.status === "IN_USE" || selected.status === "RENTED_OUT" ? (
+                  {!selectedPending && selected.status === "SIGNED_OUT" ? (
                     <Button
-                      disabled={pending}
+                      disabled={pending || !operatorUserId}
                       onClick={() =>
                         run(
                           () =>
-                            returnEquipment({
+                            signInEquipment({
                               equipmentId: selected.id,
-                              operatorName,
+                              operatorUserId,
                               notes,
                             }),
-                          "Asset returned",
+                          "Sign-in request sent",
                         )
                       }
                     >
-                      Return
+                      Request sign in
                     </Button>
                   ) : null}
                 </div>
@@ -337,13 +428,13 @@ export function WorkspaceConsole({
                       className="mt-2 w-full"
                       variant="destructive"
                       size="sm"
-                      disabled={pending}
+                      disabled={pending || !operatorUserId}
                       onClick={() =>
                         run(
                           () =>
                             reportFault({
                               equipmentId: selected.id,
-                              operatorName,
+                              operatorUserId,
                               description: faultDescription,
                             }),
                           "Fault reported",
@@ -365,22 +456,26 @@ export function WorkspaceConsole({
                       className="mt-2 w-full"
                       variant="outline"
                       size="sm"
-                      disabled={pending || selected.status !== "AVAILABLE"}
+                      disabled={
+                        pending ||
+                        Boolean(selectedPending) ||
+                        !operatorUserId ||
+                        (selected.status !== "ACTIVE" && selected.status !== "SIGNED_IN")
+                      }
                       onClick={() =>
                         run(
                           () =>
-                            createRental({
+                            requestRentalOut({
                               equipmentId: selected.id,
-                              type: "OUT",
+                              operatorUserId,
                               counterparty,
-                              startDate: new Date().toISOString(),
                               notes,
                             }),
-                          "Rental created",
+                          "Rental request sent",
                         )
                       }
                     >
-                      Send out
+                      Request send out
                     </Button>
                   </div>
                 </div>
@@ -399,7 +494,7 @@ export function WorkspaceConsole({
               Admin unlock is always separate and temporary.
             </p>
             <p className="rounded-lg border border-border bg-muted/20 p-3">
-              Every sign-out, return, rental, repair, and fault is attributed.
+              Sign-out, sign-in, and rental requests wait for an unlocked admin to accept or decline.
             </p>
           </div>
           <div className="mt-6 rounded-xl bg-primary/10 p-4">
@@ -443,8 +538,17 @@ export function WorkspaceConsole({
       </div>
 
       <IssuePanel
-        issues={
-          counts.openFaults > 0
+        issues={[
+          ...(counts.pendingRequests > 0
+            ? [
+                {
+                  id: "pending-requests",
+                  title: `${counts.pendingRequests} pending request${counts.pendingRequests === 1 ? "" : "s"}`,
+                  detail: "An unlocked admin must accept or decline these before the kit moves.",
+                },
+              ]
+            : []),
+          ...(counts.openFaults > 0
             ? [
                 {
                   id: "open-faults",
@@ -452,8 +556,8 @@ export function WorkspaceConsole({
                   detail: "Review the Faulty Queue in the protected admin dashboard.",
                 },
               ]
-            : []
-        }
+            : []),
+        ]}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
     "Serialized control for production teams and equipment-intensive organizations.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} h-full dark`}>
       <body className="min-h-full bg-background font-sans text-foreground antialiased">

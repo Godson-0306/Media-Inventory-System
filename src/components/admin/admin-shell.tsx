@@ -5,11 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   BarChart3,
+  ClipboardList,
   History,
   Layers,
   Menu,
   Truck,
   TriangleAlert,
+  Users,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Logo } from "@/components/brand/logo";
@@ -20,6 +22,8 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/admin", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/requests", label: "Requests", icon: ClipboardList },
+  { href: "/admin/members", label: "Members", icon: Users },
   { href: "/admin/equipment", label: "Equipment", icon: Layers },
   { href: "/admin/rentals", label: "Rentals", icon: Truck },
   { href: "/admin/faults", label: "Faulty Queue", icon: TriangleAlert },
@@ -30,11 +34,13 @@ export function AdminShell({
   orgName,
   userName,
   openFaults,
+  pendingRequests,
   children,
 }: {
   orgName: string;
   userName: string;
   openFaults: number;
+  pendingRequests: number;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -112,8 +118,17 @@ export function AdminShell({
         <div className="p-4 lg:p-6">{children}</div>
       </div>
       <IssuePanel
-        issues={
-          openFaults > 0
+        issues={[
+          ...(pendingRequests > 0
+            ? [
+                {
+                  id: "pending-requests",
+                  title: `${pendingRequests} pending request${pendingRequests === 1 ? "" : "s"}`,
+                  detail: "Open Requests to accept or decline workspace sign-out, sign-in, and rental moves.",
+                },
+              ]
+            : []),
+          ...(openFaults > 0
             ? [
                 {
                   id: "open-faults",
@@ -121,8 +136,8 @@ export function AdminShell({
                   detail: "Open the Faulty Queue to mark items in repair or resolved.",
                 },
               ]
-            : []
-        }
+            : []),
+        ]}
       />
     </div>
   );

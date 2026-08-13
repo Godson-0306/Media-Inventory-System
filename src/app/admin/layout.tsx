@@ -19,15 +19,21 @@ export default async function AdminLayout({
     return <UnlockForm orgName={session.orgName} />;
   }
 
-  const openFaults = await prisma.fault.count({
-    where: { orgId: session.orgId, status: { not: "RESOLVED" } },
-  });
+  const [openFaults, pendingRequests] = await Promise.all([
+    prisma.fault.count({
+      where: { orgId: session.orgId, status: { not: "RESOLVED" } },
+    }),
+    prisma.operationRequest.count({
+      where: { orgId: session.orgId, status: "PENDING" },
+    }),
+  ]);
 
   return (
     <AdminShell
       orgName={session.orgName}
       userName={session.name}
       openFaults={openFaults}
+      pendingRequests={pendingRequests}
     >
       {children}
     </AdminShell>

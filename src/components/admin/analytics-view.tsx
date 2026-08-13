@@ -19,10 +19,10 @@ import { cn } from "@/lib/utils";
 import type { Counts, EquipmentDTO } from "@/lib/types";
 
 const STATUS_COLORS = {
-  AVAILABLE: "#34d399",
-  IN_USE: "#fbbf24",
+  ACTIVE: "#34d399",
+  SIGNED_OUT: "#fbbf24",
+  SIGNED_IN: "#60a5fa",
   FAULTY: "#f87171",
-  RENTED_OUT: "#60a5fa",
 };
 
 export function AnalyticsView({
@@ -42,7 +42,7 @@ export function AnalyticsView({
   })).filter((item) => item.value > 0);
 
   const statusData = Object.entries(statusBreakdown).map(([name, value]) => ({
-    name: name.replace("_", " "),
+            name: name.replaceAll("_", " "),
     value,
     key: name,
   }));
@@ -57,8 +57,10 @@ export function AnalyticsView({
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Kpi label="Total Equipment" value={counts.total} />
-        <Kpi label="Available" value={counts.available} tone="ok" />
-        <Kpi label="In-Use" value={counts.inUse} tone="warn" />
+        <Kpi label="Active" value={counts.active} tone="ok" />
+        <Kpi label="Signed out" value={counts.signedOut} tone="warn" />
+        <Kpi label="Signed in" value={counts.signedIn} />
+        <Kpi label="Pending requests" value={counts.pendingRequests} tone="warn" />
         <Kpi label="Faulty" value={counts.faulty} tone="bad" />
         <Kpi label="Rentals In" value={counts.rentalsIn} />
         <Kpi label="Rentals Out" value={counts.rentalsOut} />

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { organizationName, email, password } = parsed.data;
+    const { organizationName, ownerName, email, password } = parsed.data;
     const existing = await prisma.user.findFirst({
       where: { email: email.toLowerCase() },
     });
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
           orgId: org.id,
           email: email.toLowerCase(),
           passwordHash,
-          name: "Admin",
+          name: ownerName,
           role: "OWNER",
         },
       });

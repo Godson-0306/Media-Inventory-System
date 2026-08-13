@@ -5,9 +5,8 @@ Serialized equipment control for churches, media teams, production companies, an
 ## Stack
 
 - Next.js 16 (App Router) + TypeScript
-- PostgreSQL + Prisma
+- Prisma with SQLite locally and PostgreSQL on Render
 - Tailwind CSS
-- Render web service + managed Postgres
 
 ## Local setup
 
@@ -17,21 +16,14 @@ Serialized equipment control for churches, media teams, production companies, an
 cp .env.example .env
 ```
 
-2. Start Postgres (Docker):
-
-```bash
-docker compose up -d
-```
-
-3. Install dependencies, generate the client, and apply migrations:
+2. Install dependencies and start the app (SQLite is created automatically):
 
 ```bash
 npm install
-npx prisma migrate deploy
 npm run dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000), register an organization, then optionally **Load sample production kit** from Settings.
+3. Open [http://localhost:3000](http://localhost:3000), register an organization, then optionally **Load sample production kit** from Settings.
 
 `AUTH_SECRET` must be at least 32 characters.
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Shield } from "lucide-react";
@@ -14,7 +14,7 @@ export function UnlockForm({ orgName }: { orgName: string }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(event: React.FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     try {
