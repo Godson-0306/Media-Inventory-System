@@ -6,13 +6,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { JoinCodeForm } from "@/components/auth/join-code-form";
 import { cn } from "@/lib/utils";
 
-type Mode = "login" | "register";
+type Mode = "login" | "register" | "join";
 
 export function AuthPanel() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("register");
+  const [mode, setMode] = useState<Mode>("login");
   const [loading, setLoading] = useState(false);
   const [organizationName, setOrganizationName] = useState("");
   const [ownerName, setOwnerName] = useState("");
@@ -33,13 +34,13 @@ export function AuthPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { error?: string; redirectTo?: string };
       if (!response.ok) {
         toast.error(data.error ?? "Request failed");
         return;
       }
       toast.success(mode === "register" ? "Organization created" : "Signed in");
-      router.push("/workspace");
+      router.push(data.redirectTo ?? "/workspace");
       router.refresh();
     } catch {
       toast.error("Failed to fetch. Confirm the app and database are running.");
@@ -48,80 +49,90 @@ export function AuthPanel() {
     }
   }
 
+  const tabs: Array<{ id: Mode; label: string }> = [
+    { id: "login", label: "Login" },
+    { id: "register", label: "Register company" },
+    { id: "join", label: "Join with code" },
+  ];
+
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
-      <div className="mb-6 grid grid-cols-2 rounded-lg bg-muted p-1">
-        {(["login", "register"] as const).map((item) => (
+      <div className="mb-6 grid grid-cols-3 rounded-lg bg-muted p-1">
+        {tabs.map((item) => (
           <button
-            key={item}
+            key={item.id}
             type="button"
-            onClick={() => setMode(item)}
+            onClick={() => setMode(item.id)}
             className={cn(
-              "rounded-md py-2 text-sm font-medium capitalize",
-              mode === item
+              "rounded-md px-1 py-2 text-xs font-medium sm:text-sm",
+              mode === item.id
                 ? "bg-background text-foreground shadow"
                 : "text-muted-foreground",
             )}
           >
-            {item}
+            {item.label}
           </button>
         ))}
       </div>
-      <form className="space-y-4" onSubmit={onSubmit}>
-        {mode === "register" ? (
-          <>
-            <div>
-              <Label htmlFor="org">Organization Name</Label>
-              <Input
-                id="org"
-                value={organizationName}
-                onChange={(event) => setOrganizationName(event.target.value)}
-                placeholder="G-Tech"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="owner">Your name</Label>
-              <Input
-                id="owner"
-                value={ownerName}
-                onChange={(event) => setOwnerName(event.target.value)}
-                placeholder="Godson"
-                required
-              />
-            </div>
-          </>
-        ) : null}
-        <div>
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@organization.com"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={mode === "register" ? 8 : 1}
-            required
-          />
-        </div>
-        <Button className="w-full" size="lg" disabled={loading}>
-          {loading
-            ? "Working..."
-            : mode === "register"
-              ? "Create organization"
-              : "Sign in"}
-        </Button>
-      </form>
+      {mode === "join" ? (
+        <JoinCodeForm />
+      ) : (
+        <form className="space-y-4" onSubmit={onSubmit}>
+          {mode === "register" ? (
+            <>
+              <div>
+                <Label htmlFor="org">Organization Name</Label>
+                <Input
+                  id="org"
+                  value={organizationName}
+                  onChange={(event) => setOrganizationName(event.target.value)}
+                  placeholder="G-Tech"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="owner">Your name</Label>
+                <Input
+                  id="owner"
+                  value={ownerName}
+                  onChange={(event) => setOwnerName(event.target.value)}
+                  placeholder="Godson"
+                  required
+                />
+              </div>
+            </>
+          ) : null}
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@organization.com"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={mode === "register" ? 8 : 1}
+              required
+            />
+          </div>
+          <Button className="w-full" size="lg" disabled={loading}>
+            {loading
+              ? "Working..."
+              : mode === "register"
+                ? "Create organization"
+                : "Sign in"}
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

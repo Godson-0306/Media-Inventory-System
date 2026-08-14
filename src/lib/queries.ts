@@ -48,7 +48,7 @@ export async function getDashboardData(orgId: string) {
     prisma.user.findMany({
       where: { orgId },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, role: true, status: true, createdAt: true },
     }),
   ]);
 

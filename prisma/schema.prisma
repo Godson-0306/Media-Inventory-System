@@ -10,7 +10,19 @@ datasource db {
 
 enum UserRole {
   OWNER
-  OPERATOR
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
 }
 
 enum EquipmentCategory {
@@ -65,6 +77,11 @@ enum ActivityAction {
   REQUEST_APPROVED
   REQUEST_DECLINED
   MEMBER_ADDED
+  MEMBER_INVITED
+  MEMBER_JOINED
+  MEMBER_DISABLED
+  MEMBER_ENABLED
+  JOIN_CODE_ROTATED
 }
 
 enum RequestType {
@@ -80,39 +97,60 @@ enum RequestStatus {
 }
 
 model Organization {
-  id          String      @id @default(cuid())
-  name        String
-  slug        String      @unique
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  users          User[]
-  equipment      Equipment[]
-  rentals        Rental[]
-  faults         Fault[]
-  activities     Activity[]
-  locationPings      LocationPing[]
-  operationRequests  OperationRequest[]
+  id                   String              @id @default(cuid())
+  name                 String
+  slug                 String              @unique
+  subscriptionStatus   SubscriptionStatus  @default(TRIAL)
+  trialEndsAt          DateTime?
+  joinCode             String?             @unique
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  users                User[]
+  equipment            Equipment[]
+  rentals              Rental[]
+  faults               Fault[]
+  activities           Activity[]
+  locationPings        LocationPing[]
+  operationRequests    OperationRequest[]
+  invites              OrgInvite[]
 }
 
 model User {
-  id            String        @id @default(cuid())
-  orgId         String
-  org           Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  email         String
-  passwordHash  String
-  name          String
-  role          UserRole      @default(OWNER)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                   String        @id @default(cuid())
+  orgId                String
+  org                  Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  email                String
+  passwordHash         String
+  name                 String
+  role                 UserRole      @default(OWNER)
+  status               UserStatus    @default(ACTIVE)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
   activities           Activity[]
   faults               Fault[]
   signedOutEquipment   Equipment[]         @relation("SignedOutBy")
   requestedOperations  OperationRequest[]  @relation("RequestedBy")
   reviewedOperations   OperationRequest[]  @relation("ReviewedBy")
   operatedRequests     OperationRequest[]  @relation("OperatorOnRequest")
+  createdInvites       OrgInvite[]         @relation("InviteCreatedBy")
 
   @@unique([orgId, email])
   @@index([email])
+}
+
+model OrgInvite {
+  id              String        @id @default(cuid())
+  orgId           String
+  org             Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  token           String        @unique
+  email           String?
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdByUserId String?
+  createdBy       User?         @relation("InviteCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+
+  @@index([orgId, usedAt])
 }
 
 model Equipment {

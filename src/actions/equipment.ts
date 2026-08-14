@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/auth";
+import { requireOwner } from "@/lib/authz";
 import { equipmentSchema } from "@/lib/validations";
 
 function parseOptionalDate(value?: string) {
@@ -13,7 +13,9 @@ function parseOptionalDate(value?: string) {
 }
 
 export async function createEquipment(input: unknown) {
-  const session = await requireSession();
+  const auth = await requireOwner();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const parsed = equipmentSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid equipment details" };

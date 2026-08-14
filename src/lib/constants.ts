@@ -32,6 +32,6 @@ export const LIVE_PING_MIN_INTERVAL_MS = 5000;
 export const LIVE_PING_TRAIL_LIMIT = 200;
 
 export const SESSION_COOKIE = "aop_session";
-export const ADMIN_COOKIE = "aop_admin";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
-export const ADMIN_UNLOCK_MAX_AGE = 60 * 15;
+export const TRIAL_DAYS = 14;
+export const INVITE_MAX_AGE_DAYS = 7;

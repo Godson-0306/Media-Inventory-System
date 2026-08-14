@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { FaultStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/auth";
+import { requireOwner } from "@/lib/authz";
 import { CLEAR_LIVE_LOCATION } from "@/lib/constants";
 
 function refresh() {
@@ -15,7 +15,9 @@ function refresh() {
 }
 
 export async function updateFaultStatus(faultId: string, status: FaultStatus) {
-  const session = await requireSession();
+  const auth = await requireOwner();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const fault = await prisma.fault.findFirst({
     where: { id: faultId, orgId: session.orgId },
   });

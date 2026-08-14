@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { hashPassword, sessionCookieOptions, signSession } from "@/lib/auth";
+import { hashPassword, homePathForRole, sessionCookieOptions, signSession } from "@/lib/auth";
 import { registerSchema } from "@/lib/validations";
 import { SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
+import { allocateJoinCode, trialEndsAtFromNow } from "@/lib/org";
 
 export async function POST(request: Request) {
   try {
@@ -28,11 +29,15 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await hashPassword(password);
+    const joinCode = await allocateJoinCode();
     const result = await prisma.$transaction(async (tx) => {
       const org = await tx.organization.create({
         data: {
           name: organizationName,
           slug: slugify(organizationName),
+          subscriptionStatus: "TRIAL",
+          trialEndsAt: trialEndsAtFromNow(),
+          joinCode,
         },
       });
       const user = await tx.user.create({
@@ -42,6 +47,7 @@ export async function POST(request: Request) {
           passwordHash,
           name: ownerName,
           role: "OWNER",
+          status: "ACTIVE",
         },
       });
       await tx.activity.create({
@@ -60,11 +66,11 @@ export async function POST(request: Request) {
       orgId: result.org.id,
       email: result.user.email,
       name: result.user.name,
-      role: result.user.role,
+      role: "OWNER",
       orgName: result.org.name,
     });
 
-    const response = NextResponse.json({ ok: true });
+    const response = NextResponse.json({ ok: true, redirectTo: homePathForRole("OWNER") });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(SESSION_MAX_AGE));
     return response;
   } catch (error) {

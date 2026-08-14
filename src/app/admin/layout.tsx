@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
-import { redirect } from "next/navigation";
-import { getSession, isAdminUnlocked } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { requireOwnerPage } from "@/lib/authz";
 import { AdminShell } from "@/components/admin/admin-shell";
-import { UnlockForm } from "@/components/admin/unlock-form";
 
 export const dynamic = "force-dynamic";
 
@@ -12,12 +10,7 @@ export default async function AdminLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/");
-  const unlocked = await isAdminUnlocked(session.userId);
-  if (!unlocked) {
-    return <UnlockForm orgName={session.orgName} />;
-  }
+  const session = await requireOwnerPage();
 
   const [openFaults, pendingRequests] = await Promise.all([
     prisma.fault.count({

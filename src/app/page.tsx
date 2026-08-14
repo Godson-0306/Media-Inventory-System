@@ -24,8 +24,8 @@ const features = [
     icon: ArrowLeftRight,
   },
   {
-    title: "Locked admin mode",
-    body: "Sensitive actions always require password confirmation before access.",
+    title: "Company control",
+    body: "The organization owner manages staff, kit, and approvals. Field staff use the phone workspace.",
     icon: Shield,
   },
 ];
@@ -45,7 +45,7 @@ export default function HomePage() {
             </div>
           </div>
           <p className="text-xs uppercase tracking-[0.2em] text-primary">
-            Protected Workspace + Admin Split
+            Protected Workspace + Owner Admin
           </p>
           <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight text-white md:text-5xl">
             Run equipment operations with structure, accountability, and a genuinely usable dashboard.

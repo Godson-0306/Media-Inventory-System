@@ -32,6 +32,7 @@ type Props = {
   orgName: string;
   userName: string;
   userId: string;
+  role: "OWNER" | "STAFF";
   equipment: EquipmentDTO[];
   activities: ActivityDTO[];
   pendingRequests: OperationRequestDTO[];
@@ -43,6 +44,7 @@ export function WorkspaceConsole({
   orgName,
   userName,
   userId,
+  role,
   equipment,
   activities,
   pendingRequests,
@@ -127,10 +129,12 @@ export function WorkspaceConsole({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => router.push("/admin")}>
-            <Shield className="h-4 w-4" />
-            Admin dashboard
-          </Button>
+          {role === "OWNER" ? (
+            <Button variant="outline" onClick={() => router.push("/admin")}>
+              <Shield className="h-4 w-4" />
+              Admin dashboard
+            </Button>
+          ) : null}
           <div className="relative">
             <Button variant="outline" onClick={() => setSettingsOpen((value) => !value)}>
               <Settings className="h-4 w-4" />
@@ -168,17 +172,19 @@ export function WorkspaceConsole({
                     Change password
                   </Button>
                 </form>
-                <Button
-                  className="mt-3 w-full"
-                  variant="outline"
-                  size="sm"
-                  disabled={pending || equipment.length > 0}
-                  onClick={() =>
-                    run(() => seedSampleKit(), "Sample production kit loaded")
-                  }
-                >
-                  Load sample production kit
-                </Button>
+                {role === "OWNER" ? (
+                  <Button
+                    className="mt-3 w-full"
+                    variant="outline"
+                    size="sm"
+                    disabled={pending || equipment.length > 0}
+                    onClick={() =>
+                      run(() => seedSampleKit(), "Sample production kit loaded")
+                    }
+                  >
+                    Load sample production kit
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -491,24 +497,32 @@ export function WorkspaceConsole({
               Organization login isolates inventory and operations.
             </p>
             <p className="rounded-lg border border-border bg-muted/20 p-3">
-              Admin unlock is always separate and temporary.
-            </p>
-            <p className="rounded-lg border border-border bg-muted/20 p-3">
-              Sign-out, sign-in, and rental requests wait for an unlocked admin to accept or decline.
+              Sign-out, sign-in, and rental requests wait for the organization owner to accept or decline.
             </p>
           </div>
+          {role === "OWNER" ? (
           <div className="mt-6 rounded-xl bg-primary/10 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">
               Admin access
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Inventory edits, rentals management, analytics, and the full fault queue live behind a protected unlock screen.
+              Inventory edits, members, rentals, analytics, and request approvals live in the company admin dashboard.
             </p>
             <Button className="mt-4 w-full" onClick={() => router.push("/admin")}>
               <Shield className="h-4 w-4" />
-              Open protected admin
+              Open admin dashboard
             </Button>
           </div>
+          ) : (
+          <div className="mt-6 rounded-xl bg-primary/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              Field workspace
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Submit sign-out and sign-in requests from this phone. Keep this tab open while kit is signed out so live GPS can update.
+            </p>
+          </div>
+          )}
         </Card>
 
         <Card className="p-4">
@@ -544,7 +558,7 @@ export function WorkspaceConsole({
                 {
                   id: "pending-requests",
                   title: `${counts.pendingRequests} pending request${counts.pendingRequests === 1 ? "" : "s"}`,
-                  detail: "An unlocked admin must accept or decline these before the kit moves.",
+                  detail: "The organization owner must accept or decline these before the kit moves.",
                 },
               ]
             : []),
@@ -553,7 +567,9 @@ export function WorkspaceConsole({
                 {
                   id: "open-faults",
                   title: `${counts.openFaults} open fault${counts.openFaults === 1 ? "" : "s"}`,
-                  detail: "Review the Faulty Queue in the protected admin dashboard.",
+                  detail: role === "OWNER"
+                    ? "Open the Faulty Queue in the admin dashboard."
+                    : "The organization owner reviews faults from the admin dashboard.",
                 },
               ]
             : []),

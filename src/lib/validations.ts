@@ -12,8 +12,26 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-export const unlockSchema = z.object({
-  password: z.string().min(1, "Password is required"),
+export const memberInviteSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .transform((value) => value.toLowerCase())
+    .pipe(z.union([z.literal(""), z.string().email("Enter a valid email")])),
+});
+
+export const joinWithCodeSchema = z.object({
+  joinCode: z.string().trim().min(8, "Enter the company join code"),
+  name: z.string().trim().min(2, "Your name is required").max(80),
+  email: z.string().trim().email("Enter a valid email"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const joinWithTokenSchema = z.object({
+  token: z.string().min(8),
+  name: z.string().trim().min(2, "Your name is required").max(80),
+  email: z.string().trim().email("Enter a valid email"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const equipmentSchema = z.object({
@@ -80,7 +98,6 @@ export const rentalOutRequestSchema = z.object({
 export const memberSchema = z.object({
   name: z.string().trim().min(2, "Member name is required").max(80),
   email: z.string().trim().email("Enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const declineRequestSchema = z.object({

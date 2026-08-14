@@ -42,7 +42,7 @@ export function HistoryView({ activities }: { activities: ActivityDTO[] }) {
         {filtered.length === 0 ? (
           <EmptyState
             title="No history found"
-            description="Sign-outs, returns, rentals, repairs, and admin unlocks will appear here as an attributed audit trail."
+            description="Sign-outs, returns, rentals, repairs, and staff joins will appear here as an attributed audit trail."
           />
         ) : (
           <div className="space-y-2">

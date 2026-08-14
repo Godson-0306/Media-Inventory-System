@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/auth";
+import { requireActiveOrg } from "@/lib/authz";
 import {
   CLEAR_LIVE_LOCATION,
   HOME_LOCATION,
@@ -26,7 +26,9 @@ async function pendingRequestFor(orgId: string, equipmentId: string) {
 }
 
 export async function signOutEquipment(input: unknown) {
-  const session = await requireSession();
+  const auth = await requireActiveOrg();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const parsed = signOutSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
@@ -84,7 +86,9 @@ export async function signOutEquipment(input: unknown) {
 }
 
 export async function signInEquipment(input: unknown) {
-  const session = await requireSession();
+  const auth = await requireActiveOrg();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const parsed = operationSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
@@ -270,7 +274,9 @@ export async function applyApprovedRentalOut(input: {
 }
 
 export async function reportFault(input: unknown) {
-  const session = await requireSession();
+  const auth = await requireActiveOrg();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const parsed = faultSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
@@ -321,7 +327,9 @@ export async function reportFault(input: unknown) {
 }
 
 export async function updateLiveLocation(input: unknown) {
-  const session = await requireSession();
+  const auth = await requireActiveOrg();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const parsed = liveLocationSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid location" };

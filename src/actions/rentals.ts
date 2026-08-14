@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/auth";
+import { requireOwner } from "@/lib/authz";
 import { rentalSchema } from "@/lib/validations";
 import { CLEAR_LIVE_LOCATION } from "@/lib/constants";
 
@@ -15,7 +15,9 @@ function refresh() {
 }
 
 export async function createRental(input: unknown) {
-  const session = await requireSession();
+  const auth = await requireOwner();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const parsed = rentalSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid rental details" };
@@ -78,7 +80,9 @@ export async function createRental(input: unknown) {
 }
 
 export async function returnRental(rentalId: string) {
-  const session = await requireSession();
+  const auth = await requireOwner();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const rental = await prisma.rental.findFirst({
     where: { id: rentalId, orgId: session.orgId },
   });

@@ -100,7 +100,16 @@ export type MemberDTO = {
   id: string;
   name: string;
   email: string;
-  role: "OWNER" | "OPERATOR";
+  role: "OWNER" | "STAFF";
+  status: "ACTIVE" | "DISABLED";
+  createdAt: string;
+};
+
+export type OrgInviteDTO = {
+  id: string;
+  token: string;
+  email: string | null;
+  expiresAt: string;
   createdAt: string;
 };
 

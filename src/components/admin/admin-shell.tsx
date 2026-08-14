@@ -106,13 +106,13 @@ export function AdminShell({
             <Menu className="h-4 w-4" />
           </Button>
           <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-            Unlocked
+            Owner
           </Badge>
         </div>
         {open ? <div className="border-b border-border p-4 lg:hidden">{nav}</div> : null}
         <div className="hidden justify-end px-6 pt-6 lg:flex">
           <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-            Unlocked
+            Owner
           </Badge>
         </div>
         <div className="p-4 lg:p-6">{children}</div>

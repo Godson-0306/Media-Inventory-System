@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { EquipmentCategory } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { hashPassword, requireSession, verifyPassword } from "@/lib/auth";
+import { hashPassword, verifyPassword } from "@/lib/auth";
+import { requireOwner, requireSession } from "@/lib/authz";
 import { passwordChangeSchema } from "@/lib/validations";
 
 const SAMPLE_KIT: Array<{
@@ -97,7 +98,9 @@ const SAMPLE_KIT: Array<{
 ];
 
 export async function seedSampleKit() {
-  const session = await requireSession();
+  const auth = await requireOwner();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const existing = await prisma.equipment.count({ where: { orgId: session.orgId } });
   if (existing > 0) {
     return { error: "Sample kit is only available on an empty inventory" };
@@ -126,7 +129,9 @@ export async function seedSampleKit() {
 }
 
 export async function changePassword(input: unknown) {
-  const session = await requireSession();
+  const auth = await requireSession();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const parsed = passwordChangeSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid password details" };

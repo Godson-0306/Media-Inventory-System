@@ -1,19 +1,16 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
-import {
-  ADMIN_COOKIE,
-  ADMIN_UNLOCK_MAX_AGE,
-  SESSION_COOKIE,
-  SESSION_MAX_AGE,
-} from "@/lib/constants";
+import { SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/constants";
+
+export type UserRoleValue = "OWNER" | "STAFF";
 
 export type SessionPayload = {
   userId: string;
   orgId: string;
   email: string;
   name: string;
-  role: "OWNER" | "OPERATOR";
+  role: UserRoleValue;
   orgName: string;
 };
 
@@ -41,14 +38,6 @@ export async function signSession(payload: SessionPayload) {
     .sign(getSecret());
 }
 
-export async function signAdminUnlock(userId: string) {
-  return new SignJWT({ userId, scope: "admin" })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${ADMIN_UNLOCK_MAX_AGE}s`)
-    .sign(getSecret());
-}
-
 export async function verifyToken<T>(token: string) {
   const { payload } = await jwtVerify(token, getSecret());
   return payload as T;
@@ -59,21 +48,13 @@ export async function getSession(): Promise<SessionPayload | null> {
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
-    return await verifyToken<SessionPayload>(token);
+    const payload = await verifyToken<SessionPayload>(token);
+    return {
+      ...payload,
+      role: payload.role === "OWNER" ? "OWNER" : "STAFF",
+    };
   } catch {
     return null;
-  }
-}
-
-export async function isAdminUnlocked(userId: string) {
-  const jar = await cookies();
-  const token = jar.get(ADMIN_COOKIE)?.value;
-  if (!token) return false;
-  try {
-    const payload = await verifyToken<{ userId: string; scope: string }>(token);
-    return payload.userId === userId && payload.scope === "admin";
-  } catch {
-    return false;
   }
 }
 
@@ -87,19 +68,6 @@ export function sessionCookieOptions(maxAge: number) {
   };
 }
 
-export async function requireSession() {
-  const session = await getSession();
-  if (!session) {
-    throw new Error("Unauthorized");
-  }
-  return session;
-}
-
-export async function requireAdminUnlocked() {
-  const session = await requireSession();
-  const unlocked = await isAdminUnlocked(session.userId);
-  if (!unlocked) {
-    return { error: "Unlock admin to accept or decline requests" as const, session: null };
-  }
-  return { error: null, session };
+export function homePathForRole(role: UserRoleValue) {
+  return role === "OWNER" ? "/admin" : "/workspace";
 }

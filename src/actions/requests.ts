@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { requireAdminUnlocked, requireSession } from "@/lib/auth";
+import { requireActiveOrg, requireOwner } from "@/lib/authz";
 import {
   applyApprovedRentalOut,
   applyApprovedSignIn,
@@ -18,7 +18,9 @@ async function pendingRequestFor(orgId: string, equipmentId: string) {
 }
 
 export async function requestRentalOut(input: unknown) {
-  const session = await requireSession();
+  const auth = await requireActiveOrg();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const parsed = rentalOutRequestSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid rental details" };
@@ -71,7 +73,9 @@ export async function requestRentalOut(input: unknown) {
 }
 
 export async function cancelOperationRequest(requestId: string) {
-  const session = await requireSession();
+  const auth = await requireActiveOrg();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const request = await prisma.operationRequest.findFirst({
     where: { id: requestId, orgId: session.orgId },
   });
@@ -109,9 +113,9 @@ export async function cancelOperationRequest(requestId: string) {
 }
 
 export async function approveOperationRequest(requestId: string) {
-  const unlocked = await requireAdminUnlocked();
-  if (unlocked.error || !unlocked.session) return { error: unlocked.error ?? "Admin unlock required" };
-  const session = unlocked.session;
+  const auth = await requireOwner();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
 
   const request = await prisma.operationRequest.findFirst({
     where: { id: requestId, orgId: session.orgId },
@@ -196,9 +200,9 @@ export async function approveOperationRequest(requestId: string) {
 }
 
 export async function declineOperationRequest(input: unknown) {
-  const unlocked = await requireAdminUnlocked();
-  if (unlocked.error || !unlocked.session) return { error: unlocked.error ?? "Admin unlock required" };
-  const session = unlocked.session;
+  const auth = await requireOwner();
+  if (!auth.ok) return { error: auth.error };
+  const session = auth.session;
   const parsed = declineRequestSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid details" };

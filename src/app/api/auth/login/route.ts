@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
+  homePathForRole,
   sessionCookieOptions,
   signSession,
   verifyPassword,
 } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations";
 import { SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/constants";
+import { ensureAuthBackfill } from "@/lib/org";
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +22,7 @@ export async function POST(request: Request) {
     }
 
     const email = parsed.data.email.toLowerCase();
+    await ensureAuthBackfill();
     const user = await prisma.user.findFirst({
       where: { email },
       include: { org: true },
@@ -28,6 +31,12 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Email or password is incorrect" },
         { status: 401 },
+      );
+    }
+    if (user.status === "DISABLED") {
+      return NextResponse.json(
+        { error: "This account has been disabled. Ask your organization owner." },
+        { status: 403 },
       );
     }
 
@@ -39,16 +48,17 @@ export async function POST(request: Request) {
       },
     });
 
+    const role = user.role === "OWNER" ? "OWNER" : "STAFF";
     const token = await signSession({
       userId: user.id,
       orgId: user.orgId,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role,
       orgName: user.org.name,
     });
 
-    const response = NextResponse.json({ ok: true });
+    const response = NextResponse.json({ ok: true, redirectTo: homePathForRole(role) });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(SESSION_MAX_AGE));
     return response;
   } catch (error) {

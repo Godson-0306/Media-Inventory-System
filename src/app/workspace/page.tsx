@@ -1,14 +1,12 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
 import { getDashboardData } from "@/lib/queries";
 import { toEquipmentDTO, toOperationRequestDTO } from "@/lib/mappers";
+import { requireActiveOrgPage } from "@/lib/authz";
 import { WorkspaceConsole } from "@/components/workspace/workspace-console";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkspacePage() {
-  const session = await getSession();
-  if (!session) redirect("/");
+  const session = await requireActiveOrgPage();
   const data = await getDashboardData(session.orgId);
 
   return (
@@ -16,16 +14,20 @@ export default async function WorkspacePage() {
       orgName={session.orgName}
       userName={session.name}
       userId={session.userId}
+      role={session.role}
       counts={data.counts}
       equipment={data.equipment.map(toEquipmentDTO)}
       pendingRequests={data.operationRequests.map(toOperationRequestDTO)}
-      members={data.members.map((member) => ({
-        id: member.id,
-        name: member.name,
-        email: member.email,
-        role: member.role,
-        createdAt: member.createdAt.toISOString(),
-      }))}
+      members={data.members
+        .filter((member) => member.status === "ACTIVE")
+        .map((member) => ({
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          role: member.role === "OWNER" ? "OWNER" : "STAFF",
+          status: member.status,
+          createdAt: member.createdAt.toISOString(),
+        }))}
       activities={data.activities.map((item) => ({
         id: item.id,
         action: item.action,
