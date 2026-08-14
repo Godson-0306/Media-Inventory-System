@@ -96,6 +96,14 @@ export type LocationPingDTO = {
   createdAt: string;
 };
 
+export type LocationDTO = {
+  id: string;
+  name: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
 export type MemberDTO = {
   id: string;
   name: string;

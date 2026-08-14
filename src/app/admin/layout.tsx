@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { prisma } from "@/lib/db";
 import { requireOwnerPage } from "@/lib/authz";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { OrgAccent } from "@/components/brand/org-accent";
 
 export const dynamic = "force-dynamic";
 
@@ -22,13 +23,16 @@ export default async function AdminLayout({
   ]);
 
   return (
+    <OrgAccent branding={session.branding}>
     <AdminShell
       orgName={session.orgName}
       userName={session.name}
+      logoUrl={session.branding?.logoUrl}
       openFaults={openFaults}
       pendingRequests={pendingRequests}
     >
       {children}
     </AdminShell>
+    </OrgAccent>
   );
 }

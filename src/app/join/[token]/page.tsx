@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { Logo } from "@/components/brand/logo";
 import { JoinInviteForm } from "@/components/auth/join-invite-form";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { OrgAccent } from "@/components/brand/org-accent";
+import { resolveBranding } from "@/lib/org";
 
 export const dynamic = "force-dynamic";
 
@@ -20,18 +23,25 @@ export default async function JoinInvitePage({
 
   const expired = invite.expiresAt.getTime() <= Date.now();
   const used = Boolean(invite.usedAt);
+  const branding = resolveBranding(invite.org);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_28%),linear-gradient(180deg,#0b0f19_0%,#0a1120_100%)]">
+    <OrgAccent branding={branding}>
+    <main className="min-h-screen bg-background bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--primary)_16%,transparent),transparent_32%)]">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-10">
-        <div className="mb-8 flex items-center gap-3">
-          <Logo />
-          <div>
-            <p className="font-semibold">Join {invite.org.name}</p>
-            <p className="text-sm text-muted-foreground">
-              Create your staff account for this company workspace.
-            </p>
+        <div className="mb-8 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Logo src={branding?.logoUrl} alt={invite.org.name} />
+            <div>
+              <p className="font-semibold">
+                {branding?.loginHeadline || `Join ${branding?.brandName || invite.org.name}`}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {branding?.loginTagline || "Create your staff account for this company workspace."}
+              </p>
+            </div>
           </div>
+          <ThemeToggle />
         </div>
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
           {used || expired ? (
@@ -59,5 +69,6 @@ export default async function JoinInvitePage({
         </div>
       </div>
     </main>
+    </OrgAccent>
   );
 }

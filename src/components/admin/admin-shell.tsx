@@ -6,15 +6,19 @@ import {
   ArrowLeft,
   BarChart3,
   ClipboardList,
+  CreditCard,
   History,
   Layers,
+  MapPin,
   Menu,
+  Palette,
   Truck,
   TriangleAlert,
   Users,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Logo } from "@/components/brand/logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { IssuePanel } from "@/components/issue-panel";
@@ -25,20 +29,25 @@ const links = [
   { href: "/admin/requests", label: "Requests", icon: ClipboardList },
   { href: "/admin/members", label: "Members", icon: Users },
   { href: "/admin/equipment", label: "Equipment", icon: Layers },
+  { href: "/admin/locations", label: "Locations", icon: MapPin },
   { href: "/admin/rentals", label: "Rentals", icon: Truck },
   { href: "/admin/faults", label: "Faulty Queue", icon: TriangleAlert },
   { href: "/admin/history", label: "History", icon: History },
+  { href: "/admin/appearance", label: "Appearance", icon: Palette },
+  { href: "/org/billing", label: "Plans", icon: CreditCard },
 ];
 
 export function AdminShell({
   orgName,
   userName,
+  logoUrl,
   openFaults,
   pendingRequests,
   children,
 }: {
   orgName: string;
   userName: string;
+  logoUrl?: string | null;
   openFaults: number;
   pendingRequests: number;
   children: ReactNode;
@@ -79,7 +88,7 @@ export function AdminShell({
       <div className="min-h-svh lg:grid lg:h-svh lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="hidden border-r border-border bg-card/60 p-4 lg:flex lg:h-svh lg:flex-col lg:overflow-y-auto">
           <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
-            <Logo />
+            <Logo src={logoUrl} alt={orgName} />
             <div>
               <p className="text-sm font-semibold">Admin Dashboard</p>
               <p className="text-xs text-muted-foreground">{orgName}</p>
@@ -107,16 +116,22 @@ export function AdminShell({
               <Button variant="outline" size="icon" onClick={() => setOpen((value) => !value)}>
                 <Menu className="h-4 w-4" />
               </Button>
-              <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-                Owner
-              </Badge>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                  Owner
+                </Badge>
+              </div>
             </div>
             {open ? <div className="border-t border-border p-4">{nav}</div> : null}
           </div>
           <div className="sticky top-0 z-20 hidden justify-end border-b border-border bg-background/95 px-6 py-4 backdrop-blur lg:flex">
-            <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-              Owner
-            </Badge>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                Owner
+              </Badge>
+            </div>
           </div>
           <div className="p-4 lg:p-6">{children}</div>
         </div>

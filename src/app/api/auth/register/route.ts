@@ -36,8 +36,15 @@ export async function POST(request: Request) {
           name: organizationName,
           slug: slugify(organizationName),
           subscriptionStatus: "TRIAL",
+          plan: "STARTER",
           trialEndsAt: trialEndsAtFromNow(),
           joinCode,
+        },
+      });
+      await tx.orgLocation.create({
+        data: {
+          orgId: org.id,
+          name: "Storage / cage",
         },
       });
       const user = await tx.user.create({

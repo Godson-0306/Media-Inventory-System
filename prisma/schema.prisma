@@ -25,6 +25,12 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+enum SubscriptionPlan {
+  STARTER
+  STUDIO
+  ENTERPRISE
+}
+
 enum EquipmentCategory {
   AUDIO
   CABLES
@@ -65,6 +71,11 @@ enum ActivityAction {
   ADMIN_UNLOCK
   EQUIPMENT_CREATED
   EQUIPMENT_UPDATED
+  EQUIPMENT_DELETED
+  LOCATION_CREATED
+  LOCATION_UPDATED
+  LOCATION_DELETED
+  APPEARANCE_UPDATED
   SIGN_OUT
   SIGN_IN
   RETURN
@@ -101,8 +112,14 @@ model Organization {
   name                 String
   slug                 String              @unique
   subscriptionStatus   SubscriptionStatus  @default(TRIAL)
+  plan                 SubscriptionPlan    @default(STARTER)
   trialEndsAt          DateTime?
   joinCode             String?             @unique
+  brandName            String?
+  logoUrl              String?
+  accentColor          String?
+  loginHeadline        String?
+  loginTagline         String?
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   users                User[]
@@ -113,6 +130,21 @@ model Organization {
   locationPings        LocationPing[]
   operationRequests    OperationRequest[]
   invites              OrgInvite[]
+  locations            OrgLocation[]
+}
+
+model OrgLocation {
+  id         String        @id @default(cuid())
+  orgId      String
+  org        Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name       String
+  address    String?
+  latitude   Float?
+  longitude  Float?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([orgId])
 }
 
 model User {

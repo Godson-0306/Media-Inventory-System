@@ -10,6 +10,7 @@ import {
   Shield,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,22 +23,23 @@ import { IssuePanel } from "@/components/issue-panel";
 import { signOutEquipment, signInEquipment, reportFault } from "@/actions/operations";
 import { cancelOperationRequest, requestRentalOut } from "@/actions/requests";
 import { changePassword, seedSampleKit } from "@/actions/settings";
-import { PlacePicker } from "@/components/maps/place-picker";
 import { LiveTracker } from "@/components/maps/live-tracker";
 import { useRefreshWhile } from "@/hooks/use-refresh-while";
 import { CATEGORIES, STATUSES } from "@/lib/constants";
 import { actionLabel, cn, formatDateTime, formatRelativeTime, requestTypeLabel, statusLabel } from "@/lib/utils";
-import type { ActivityDTO, Counts, EquipmentDTO, MemberDTO, OperationRequestDTO, PlaceHit } from "@/lib/types";
+import type { ActivityDTO, Counts, EquipmentDTO, LocationDTO, MemberDTO, OperationRequestDTO } from "@/lib/types";
 
 type Props = {
   orgName: string;
   userName: string;
   userId: string;
   role: "OWNER" | "STAFF";
+  logoUrl?: string | null;
   equipment: EquipmentDTO[];
   activities: ActivityDTO[];
   pendingRequests: OperationRequestDTO[];
   members: MemberDTO[];
+  locations: LocationDTO[];
   counts: Counts;
 };
 
@@ -46,10 +48,12 @@ export function WorkspaceConsole({
   userName,
   userId,
   role,
+  logoUrl,
   equipment,
   activities,
   pendingRequests,
   members,
+  locations,
   counts,
 }: Props) {
   const router = useRouter();
@@ -63,7 +67,7 @@ export function WorkspaceConsole({
   const [notes, setNotes] = useState("");
   const [faultDescription, setFaultDescription] = useState("");
   const [counterparty, setCounterparty] = useState("");
-  const [destination, setDestination] = useState<PlaceHit | null>(null);
+  const [destinationId, setDestinationId] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -114,7 +118,7 @@ export function WorkspaceConsole({
       setNotes("");
       setFaultDescription("");
       setCounterparty("");
-      setDestination(null);
+      setDestinationId("");
     });
   }
 
@@ -123,13 +127,14 @@ export function WorkspaceConsole({
       <LiveTracker userId={userId} equipment={equipment} />
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
-          <Logo />
+          <Logo src={logoUrl} alt={orgName} />
           <div>
             <p className="font-semibold">{orgName} Operations Console</p>
             <p className="text-xs text-muted-foreground">Asset Operations Platform</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           {role === "OWNER" ? (
             <Button variant="outline" onClick={() => router.push("/admin")}>
               <Shield className="h-4 w-4" />
@@ -346,7 +351,27 @@ export function WorkspaceConsole({
                   />
                 </div>
                 {!selectedPending && (selected.status === "ACTIVE" || selected.status === "SIGNED_IN") ? (
-                  <PlacePicker value={destination} onChange={setDestination} />
+                  <div>
+                    <Label htmlFor="destination">Destination</Label>
+                    <Select
+                      id="destination"
+                      value={destinationId}
+                      onChange={(event) => setDestinationId(event.target.value)}
+                    >
+                      <option value="">Select a saved location</option>
+                      {locations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.name}
+                          {location.address ? ` · ${location.address}` : ""}
+                        </option>
+                      ))}
+                    </Select>
+                    {locations.length === 0 ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Ask the owner to add a saved location in admin.
+                      </p>
+                    ) : null}
+                  </div>
                 ) : null}
                 {selectedPending ? (
                   <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
@@ -382,7 +407,7 @@ export function WorkspaceConsole({
                 <div className="flex flex-wrap gap-2">
                   {!selectedPending && (selected.status === "ACTIVE" || selected.status === "SIGNED_IN") ? (
                     <Button
-                      disabled={pending || !destination || !operatorUserId}
+                      disabled={pending || !destinationId || !operatorUserId}
                       onClick={() =>
                         run(
                           () =>
@@ -390,10 +415,7 @@ export function WorkspaceConsole({
                               equipmentId: selected.id,
                               operatorUserId,
                               notes,
-                              locationLabel: destination?.label,
-                              locationAddress: destination?.address,
-                              latitude: destination?.latitude,
-                              longitude: destination?.longitude,
+                              locationId: destinationId,
                             }),
                           "Sign-out request sent",
                         )

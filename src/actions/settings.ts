@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { requireOwner, requireSession } from "@/lib/authz";
 import { passwordChangeSchema } from "@/lib/validations";
+import { capReached, planLimits } from "@/lib/plans";
 
 const SAMPLE_KIT: Array<{
   name: string;
@@ -104,6 +105,16 @@ export async function seedSampleKit() {
   const existing = await prisma.equipment.count({ where: { orgId: session.orgId } });
   if (existing > 0) {
     return { error: "Sample kit is only available on an empty inventory" };
+  }
+  const org = await prisma.organization.findUnique({
+    where: { id: session.orgId },
+    select: { plan: true },
+  });
+  const limits = planLimits(org?.plan);
+  if (capReached(SAMPLE_KIT.length, limits.maxItems)) {
+    return {
+      error: `Sample kit has ${SAMPLE_KIT.length} items, which exceeds this plan’s ${limits.maxItems}-item cap.`,
+    };
   }
 
   await prisma.equipment.createMany({

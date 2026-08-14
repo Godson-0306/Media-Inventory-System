@@ -48,6 +48,11 @@ export async function signOutEquipment(input: unknown) {
   const operator = await resolveOrgMember(session.orgId, parsed.data.operatorUserId);
   if (operator.error || !operator.member) return { error: operator.error ?? "Select a member" };
 
+  const location = await prisma.orgLocation.findFirst({
+    where: { id: parsed.data.locationId, orgId: session.orgId },
+  });
+  if (!location) return { error: "Select a saved destination" };
+
   await prisma.operationRequest.create({
     data: {
       orgId: session.orgId,
@@ -57,10 +62,10 @@ export async function signOutEquipment(input: unknown) {
       type: "SIGN_OUT",
       operatorName: operator.member.name,
       notes: parsed.data.notes ?? "",
-      locationLabel: parsed.data.locationLabel,
-      locationAddress: parsed.data.locationAddress ?? "",
-      latitude: parsed.data.latitude,
-      longitude: parsed.data.longitude,
+      locationLabel: location.name,
+      locationAddress: location.address ?? "",
+      latitude: location.latitude,
+      longitude: location.longitude,
     },
   });
   await prisma.activity.create({
@@ -74,10 +79,10 @@ export async function signOutEquipment(input: unknown) {
         operatorName: operator.member.name,
         operatorUserId: operator.member.id,
         notes: parsed.data.notes ?? "",
-        place: parsed.data.locationLabel,
-        address: parsed.data.locationAddress ?? "",
-        lat: parsed.data.latitude,
-        lng: parsed.data.longitude,
+        place: location.name,
+        address: location.address ?? "",
+        lat: location.latitude,
+        lng: location.longitude,
       },
     },
   });

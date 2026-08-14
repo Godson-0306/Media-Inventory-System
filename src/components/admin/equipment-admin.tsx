@@ -1,36 +1,69 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { createEquipment } from "@/actions/equipment";
+import { createEquipment, deleteEquipment, updateEquipment } from "@/actions/equipment";
 import { seedSampleKit } from "@/actions/settings";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/empty-state";
-import { CATEGORIES } from "@/lib/constants";
+import {
+  EquipmentForm,
+  dateInputValue,
+  emptyEquipmentForm,
+  type EquipmentFormValues,
+} from "@/components/admin/equipment-form";
+import { capReached, formatCap } from "@/lib/plans";
 import { statusLabel } from "@/lib/utils";
 import type { EquipmentDTO } from "@/lib/types";
 
-export function EquipmentAdmin({ equipment }: { equipment: EquipmentDTO[] }) {
+export function EquipmentAdmin({
+  equipment,
+  maxItems,
+}: {
+  equipment: EquipmentDTO[];
+  maxItems: number | null;
+}) {
   const [pending, startTransition] = useTransition();
-  const [form, setForm] = useState({
-    name: "",
-    serialNumber: "",
-    brand: "",
-    model: "",
-    category: "CAMERAS",
-    purchaseDate: "",
-    warrantyDate: "",
-    conditionNotes: "",
-  });
+  const [form, setForm] = useState<EquipmentFormValues>(emptyEquipmentForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const atCap = !editingId && capReached(equipment.length, maxItems);
 
-  function update(key: keyof typeof form, value: string) {
+  function update(key: keyof EquipmentFormValues, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function startEdit(item: EquipmentDTO) {
+    setEditingId(item.id);
+    setForm({
+      name: item.name,
+      serialNumber: item.serialNumber,
+      brand: item.brand,
+      model: item.model,
+      category: item.category,
+      purchaseDate: dateInputValue(item.purchaseDate),
+      warrantyDate: dateInputValue(item.warrantyDate),
+      conditionNotes: item.conditionNotes,
+    });
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setForm(emptyEquipmentForm);
+  }
+
+  function confirmDelete(item: EquipmentDTO) {
+    const ok = window.confirm(`Delete ${item.name} (${item.serialNumber})? This cannot be undone.`);
+    if (!ok) return;
+    startTransition(async () => {
+      const result = await deleteEquipment({ id: item.id });
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success("Asset deleted");
+        if (editingId === item.id) resetForm();
+      }
+    });
   }
 
   return (
@@ -50,7 +83,9 @@ export function EquipmentAdmin({ equipment }: { equipment: EquipmentDTO[] }) {
                 Protected management for serialized assets.
               </p>
             </div>
-            <span className="text-sm text-muted-foreground">{equipment.length} Items</span>
+            <span className="text-sm text-muted-foreground">
+              {formatCap(equipment.length, maxItems, "items")}
+            </span>
           </div>
           {equipment.length === 0 ? (
             <EmptyState
@@ -75,123 +110,75 @@ export function EquipmentAdmin({ equipment }: { equipment: EquipmentDTO[] }) {
           ) : (
             <div className="space-y-2">
               {equipment.map((item) => (
-                <Link
+                <div
                   key={item.id}
-                  href={`/admin/equipment/${item.id}`}
-                  className="block rounded-lg border border-border px-3 py-3 hover:bg-muted/40"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-3"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.serialNumber} · {item.brand} {item.model}
-                        {item.locationLabel ? ` · ${item.locationLabel}` : ""}
-                      </p>
-                    </div>
-                    <span className="text-xs uppercase text-primary">
-                      {statusLabel(item.status)}
-                    </span>
+                  <Link href={`/admin/equipment/${item.id}`} className="min-w-0 flex-1 hover:opacity-80">
+                    <p className="font-medium">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.serialNumber} · {item.brand} {item.model}
+                      {item.locationLabel ? ` · ${item.locationLabel}` : ""}
+                    </p>
+                  </Link>
+                  <span className="shrink-0 text-xs uppercase text-primary">
+                    {statusLabel(item.status)}
+                  </span>
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => startEdit(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      disabled={pending}
+                      onClick={() => confirmDelete(item)}
+                    >
+                      Delete
+                    </Button>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}
         </Card>
         <Card className="p-4">
-          <h2 className="mb-4 font-medium">Add equipment</h2>
-          <form
-            className="space-y-3"
-            onSubmit={(event) => {
-              event.preventDefault();
+          <h2 className="mb-4 font-medium">{editingId ? "Edit equipment" : "Add equipment"}</h2>
+          {atCap ? (
+            <p className="mb-3 text-sm text-amber-600 dark:text-amber-200">
+              This plan is at its item cap. Delete an asset or upgrade to add more.
+            </p>
+          ) : null}
+          <EquipmentForm
+            form={form}
+            onChange={update}
+            pending={pending}
+            disabled={atCap}
+            submitLabel={editingId ? "Save changes" : "Create asset"}
+            onCancel={editingId ? resetForm : undefined}
+            onSubmit={() =>
               startTransition(async () => {
-                const result = await createEquipment(form);
+                const result = editingId
+                  ? await updateEquipment({ id: editingId, ...form })
+                  : await createEquipment(form);
                 if (result.error) {
                   toast.error(result.error);
                   return;
                 }
-                toast.success("Asset created");
-                setForm({
-                  name: "",
-                  serialNumber: "",
-                  brand: "",
-                  model: "",
-                  category: "CAMERAS",
-                  purchaseDate: "",
-                  warrantyDate: "",
-                  conditionNotes: "",
-                });
-              });
-            }}
-          >
-            <Field label="Equipment name">
-              <Input value={form.name} onChange={(e) => update("name", e.target.value)} required />
-            </Field>
-            <Field label="Serial number">
-              <Input
-                value={form.serialNumber}
-                onChange={(e) => update("serialNumber", e.target.value)}
-                required
-              />
-            </Field>
-            <Field label="Brand">
-              <Input value={form.brand} onChange={(e) => update("brand", e.target.value)} required />
-            </Field>
-            <Field label="Model">
-              <Input value={form.model} onChange={(e) => update("model", e.target.value)} required />
-            </Field>
-            <Field label="Select category">
-              <Select
-                value={form.category}
-                onChange={(e) => update("category", e.target.value)}
-              >
-                {CATEGORIES.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Purchase date">
-              <Input
-                type="date"
-                value={form.purchaseDate}
-                onChange={(e) => update("purchaseDate", e.target.value)}
-              />
-            </Field>
-            <Field label="Warranty date">
-              <Input
-                type="date"
-                value={form.warrantyDate}
-                onChange={(e) => update("warrantyDate", e.target.value)}
-              />
-            </Field>
-            <Field label="Condition notes">
-              <Textarea
-                value={form.conditionNotes}
-                onChange={(e) => update("conditionNotes", e.target.value)}
-              />
-            </Field>
-            <Button className="w-full" disabled={pending}>
-              {pending ? "Creating..." : "Create asset"}
-            </Button>
-          </form>
+                toast.success(editingId ? "Asset updated" : "Asset created");
+                resetForm();
+              })
+            }
+          />
         </Card>
       </div>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <Label>{label}</Label>
-      {children}
     </div>
   );
 }

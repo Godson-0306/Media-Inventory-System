@@ -39,6 +39,12 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
+    if (parsed.data.orgSlug && user.org.slug !== parsed.data.orgSlug) {
+      return NextResponse.json(
+        { error: "This account does not belong to this organization" },
+        { status: 403 },
+      );
+    }
 
     await prisma.activity.create({
       data: {

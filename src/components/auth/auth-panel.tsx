@@ -12,7 +12,13 @@ import { cn } from "@/lib/utils";
 
 type Mode = "login" | "register" | "join";
 
-export function AuthPanel() {
+export function AuthPanel({
+  orgSlug,
+  loginOnly = false,
+}: {
+  orgSlug?: string;
+  loginOnly?: boolean;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [loading, setLoading] = useState(false);
@@ -29,7 +35,7 @@ export function AuthPanel() {
       const payload =
         mode === "register"
           ? { organizationName, ownerName, email, password }
-          : { email, password };
+          : { email, password, orgSlug };
       const response = await fetch(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,15 +56,17 @@ export function AuthPanel() {
     }
   }
 
-  const tabs: Array<{ id: Mode; label: string }> = [
-    { id: "login", label: "Login" },
-    { id: "register", label: "Register company" },
-    { id: "join", label: "Join with code" },
-  ];
+  const tabs: Array<{ id: Mode; label: string }> = loginOnly
+    ? [{ id: "login", label: "Login" }]
+    : [
+        { id: "login", label: "Login" },
+        { id: "register", label: "Register company" },
+        { id: "join", label: "Join with code" },
+      ];
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
-      <div className="mb-6 grid grid-cols-3 rounded-lg bg-muted p-1">
+      <div className={cn("mb-6 rounded-lg bg-muted p-1", loginOnly ? "grid grid-cols-1" : "grid grid-cols-3")}>
         {tabs.map((item) => (
           <button
             key={item.id}

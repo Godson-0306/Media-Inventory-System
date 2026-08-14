@@ -7,6 +7,16 @@ import { EmptyState } from "@/components/empty-state";
 import { useRefreshWhile } from "@/hooks/use-refresh-while";
 import { actionLabel, formatDate, formatDateTime, formatRelativeTime, statusLabel } from "@/lib/utils";
 import type { EquipmentDTO, FaultDTO, LocationPingDTO, RentalDTO, TimelineEvent } from "@/lib/types";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { deleteEquipment, updateEquipment } from "@/actions/equipment";
+import { Button } from "@/components/ui/button";
+import {
+  EquipmentForm,
+  dateInputValue,
+  type EquipmentFormValues,
+} from "@/components/admin/equipment-form";
 
 const PlaceMap = dynamic(
   () => import("@/components/maps/place-map").then((mod) => mod.PlaceMap),
@@ -20,6 +30,7 @@ export function LifeRecord({
   rentals,
   locationPings = [],
   backHref,
+  canManage = false,
 }: {
   equipment: EquipmentDTO;
   timeline: TimelineEvent[];
@@ -27,7 +38,21 @@ export function LifeRecord({
   rentals: RentalDTO[];
   locationPings?: LocationPingDTO[];
   backHref: string;
+  canManage?: boolean;
 }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<EquipmentFormValues>({
+    name: equipment.name,
+    serialNumber: equipment.serialNumber,
+    brand: equipment.brand,
+    model: equipment.model,
+    category: equipment.category,
+    purchaseDate: dateInputValue(equipment.purchaseDate),
+    warrantyDate: dateInputValue(equipment.warrantyDate),
+    conditionNotes: equipment.conditionNotes,
+  });
   useRefreshWhile(equipment.status === "SIGNED_OUT");
 
   const destinationPin =
@@ -86,6 +111,61 @@ export function LifeRecord({
           {statusLabel(equipment.status)}
         </Badge>
       </div>
+      {canManage ? (
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => setEditing((value) => !value)}>
+            {editing ? "Close editor" : "Edit"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={pending}
+            onClick={() => {
+              const ok = window.confirm(
+                `Delete ${equipment.name} (${equipment.serialNumber})? This cannot be undone.`,
+              );
+              if (!ok) return;
+              startTransition(async () => {
+                const result = await deleteEquipment({ id: equipment.id });
+                if (result.error) {
+                  toast.error(result.error);
+                  return;
+                }
+                toast.success("Asset deleted");
+                router.push("/admin/equipment");
+                router.refresh();
+              });
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      ) : null}
+      {canManage && editing ? (
+        <Card className="p-4">
+          <h2 className="mb-4 font-medium">Edit equipment</h2>
+          <EquipmentForm
+            form={form}
+            onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))}
+            pending={pending}
+            submitLabel="Save changes"
+            onCancel={() => setEditing(false)}
+            onSubmit={() =>
+              startTransition(async () => {
+                const result = await updateEquipment({ id: equipment.id, ...form });
+                if (result.error) {
+                  toast.error(result.error);
+                  return;
+                }
+                toast.success("Asset updated");
+                setEditing(false);
+                router.refresh();
+              })
+            }
+          />
+        </Card>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Stat label="Operator" value={equipment.currentOperator ?? "—"} />

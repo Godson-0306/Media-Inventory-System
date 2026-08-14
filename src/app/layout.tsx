@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
-import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme/theme-provider";
+import { ThemeToaster } from "@/components/theme/theme-toaster";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,18 +16,19 @@ export const metadata: Metadata = {
     "Serialized control for production teams and equipment-intensive organizations.",
 };
 
+const themeScript = `(function(){try{var t=localStorage.getItem("aop-theme");document.documentElement.classList.toggle("dark",t!=="light");}catch(e){document.documentElement.classList.add("dark");}})();`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} h-full dark`}>
+    <html lang="en" className={`${inter.variable} h-full dark`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full bg-background font-sans text-foreground antialiased">
-        {children}
-        <Toaster
-          theme="dark"
-          position="top-right"
-          toastOptions={{
-            className: "border border-border bg-card text-foreground",
-          }}
-        />
+        <ThemeProvider>
+          {children}
+          <ThemeToaster />
+        </ThemeProvider>
       </body>
     </html>
   );

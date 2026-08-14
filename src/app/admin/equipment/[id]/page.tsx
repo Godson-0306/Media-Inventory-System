@@ -20,6 +20,7 @@ export default async function AdminEquipmentLifePage({
   return (
     <LifeRecord
       backHref="/admin/equipment"
+      canManage
       equipment={toEquipmentDTO(data.equipment)}
       timeline={data.timeline}
       locationPings={data.locationPings.map((ping) => ({

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { AuthPanel } from "@/components/auth/auth-panel";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const features = [
   {
@@ -32,22 +33,25 @@ const features = [
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_28%),linear-gradient(180deg,#0b0f19_0%,#0a1120_100%)]">
+    <main className="min-h-screen bg-background bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--primary)_16%,transparent),transparent_32%)]">
       <div className="mx-auto grid min-h-screen max-w-7xl gap-10 px-6 py-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
         <section>
-          <div className="mb-10 flex items-center gap-3">
-            <Logo />
-            <div>
-              <p className="font-semibold">Asset Operations Platform</p>
-              <p className="text-sm text-muted-foreground">
-                Serialized control for production teams and equipment-intensive organizations.
-              </p>
+          <div className="mb-10 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Logo />
+              <div>
+                <p className="font-semibold">Asset Operations Platform</p>
+                <p className="text-sm text-muted-foreground">
+                  Serialized control for production teams and equipment-intensive organizations.
+                </p>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
           <p className="text-xs uppercase tracking-[0.2em] text-primary">
             Protected Workspace + Owner Admin
           </p>
-          <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight text-white md:text-5xl">
+          <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight text-foreground md:text-5xl">
             Run equipment operations with structure, accountability, and a genuinely usable dashboard.
           </h1>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">

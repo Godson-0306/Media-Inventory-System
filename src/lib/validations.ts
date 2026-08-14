@@ -10,6 +10,7 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email"),
   password: z.string().min(1, "Password is required"),
+  orgSlug: z.string().trim().max(80).optional(),
 });
 
 export const memberInviteSchema = z.object({
@@ -53,6 +54,14 @@ export const equipmentSchema = z.object({
   conditionNotes: z.string().optional(),
 });
 
+export const equipmentUpdateSchema = equipmentSchema.extend({
+  id: z.string().min(1),
+});
+
+export const equipmentIdSchema = z.object({
+  id: z.string().min(1),
+});
+
 export const operationSchema = z.object({
   equipmentId: z.string().min(1),
   operatorUserId: z.string().min(1, "Select the member taking this kit"),
@@ -60,10 +69,7 @@ export const operationSchema = z.object({
 });
 
 export const signOutSchema = operationSchema.extend({
-  locationLabel: z.string().trim().min(2, "Enter where this equipment is going"),
-  locationAddress: z.string().optional(),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
+  locationId: z.string().min(1, "Select a destination"),
 });
 
 export const liveLocationSchema = z.object({
@@ -105,8 +111,38 @@ export const declineRequestSchema = z.object({
   declineReason: z.string().trim().max(400).optional(),
 });
 
-export const passwordChangeSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(8, "New password must be at least 8 characters"),
-  });
+export const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "New password must be at least 8 characters"),
+});
+
+export const locationSchema = z.object({
+  name: z.string().trim().min(2, "Location name is required").max(80),
+  address: z.string().trim().max(200).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+});
+
+export const locationUpdateSchema = locationSchema.extend({
+  id: z.string().min(1),
+});
+
+const optionalUrl = z
+  .string()
+  .trim()
+  .refine((value) => value === "" || /^https?:\/\//i.test(value), "Enter a valid image URL");
+
+export const appearanceSchema = z.object({
+  brandName: z.string().trim().max(80).optional(),
+  logoUrl: optionalUrl.optional(),
+  accentColor: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || /^#[0-9A-Fa-f]{6}$/.test(value),
+      "Use a hex color like #3b82f6",
+    )
+    .optional(),
+  loginHeadline: z.string().trim().max(120).optional(),
+  loginTagline: z.string().trim().max(200).optional(),
+});

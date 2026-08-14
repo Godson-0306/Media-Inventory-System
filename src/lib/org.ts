@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { INVITE_MAX_AGE_DAYS, TRIAL_DAYS } from "@/lib/constants";
-import type { SubscriptionStatus } from "@prisma/client";
+import { HOME_LOCATION, INVITE_MAX_AGE_DAYS, TRIAL_DAYS } from "@/lib/constants";
+import type { SubscriptionPlan, SubscriptionStatus } from "@prisma/client";
+import { hasCustomInterface } from "@/lib/plans";
 
 const JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 let backfilledRoles = false;
@@ -59,6 +60,45 @@ export function isOrgActive(org: {
   return false;
 }
 
+export async function ensureDefaultLocation(orgId: string) {
+  const count = await prisma.orgLocation.count({ where: { orgId } });
+  if (count > 0) return;
+  await prisma.orgLocation.create({
+    data: {
+      orgId,
+      name: HOME_LOCATION.label,
+      address: HOME_LOCATION.address || null,
+    },
+  });
+}
+
+export type OrgBranding = {
+  brandName: string | null;
+  logoUrl: string | null;
+  accentColor: string | null;
+  loginHeadline: string | null;
+  loginTagline: string | null;
+};
+
+export function resolveBranding(org: {
+  plan: SubscriptionPlan | string;
+  name: string;
+  brandName: string | null;
+  logoUrl: string | null;
+  accentColor: string | null;
+  loginHeadline: string | null;
+  loginTagline: string | null;
+}): OrgBranding | null {
+  if (!hasCustomInterface(org.plan)) return null;
+  return {
+    brandName: org.brandName?.trim() || org.name,
+    logoUrl: org.logoUrl,
+    accentColor: org.accentColor,
+    loginHeadline: org.loginHeadline,
+    loginTagline: org.loginTagline,
+  };
+}
+
 export async function allocateJoinCode() {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const joinCode = generateJoinCode();
@@ -76,6 +116,9 @@ export async function ensureOrgDefaults(orgId: string) {
   if (!org.trialEndsAt && org.subscriptionStatus === "TRIAL") {
     data.trialEndsAt = trialEndsAtFromNow();
   }
-  if (Object.keys(data).length === 0) return org;
-  return prisma.organization.update({ where: { id: org.id }, data });
+  const next = Object.keys(data).length === 0
+    ? org
+    : await prisma.organization.update({ where: { id: org.id }, data });
+  await ensureDefaultLocation(orgId);
+  return next;
 }

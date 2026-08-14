@@ -19,7 +19,7 @@ function asNumber(value: unknown) {
 }
 
 export async function getDashboardData(orgId: string) {
-  const [equipment, activities, rentals, faults, pendingRequests, members] = await Promise.all([
+  const [equipment, activities, rentals, faults, pendingRequests, members, locations] = await Promise.all([
     prisma.equipment.findMany({
       where: { orgId },
       orderBy: { name: "asc" },
@@ -49,6 +49,10 @@ export async function getDashboardData(orgId: string) {
       where: { orgId },
       orderBy: { name: "asc" },
       select: { id: true, name: true, email: true, role: true, status: true, createdAt: true },
+    }),
+    prisma.orgLocation.findMany({
+      where: { orgId },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -88,6 +92,7 @@ export async function getDashboardData(orgId: string) {
     faults,
     operationRequests: pendingRequests,
     members,
+    locations,
     counts,
     mostUsed,
     categoryBreakdown,

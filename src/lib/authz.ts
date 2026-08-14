@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSession, type SessionPayload, type UserRoleValue } from "@/lib/auth";
-import { ensureAuthBackfill, ensureOrgDefaults, isOrgActive } from "@/lib/org";
+import { ensureAuthBackfill, ensureOrgDefaults, isOrgActive, resolveBranding, type OrgBranding } from "@/lib/org";
+import { asPlanId, type PlanId } from "@/lib/plans";
 import type { SubscriptionStatus, UserStatus } from "@prisma/client";
 
 export type LiveSession = SessionPayload & {
@@ -9,6 +10,8 @@ export type LiveSession = SessionPayload & {
   subscriptionStatus: SubscriptionStatus;
   trialEndsAt: Date | null;
   joinCode: string | null;
+  plan: PlanId;
+  branding: OrgBranding | null;
 };
 
 export type AuthResult =
@@ -25,17 +28,20 @@ export async function getLiveSession(): Promise<LiveSession | null> {
   });
   if (!user || user.status === "DISABLED") return null;
   const org = (await ensureOrgDefaults(user.orgId)) ?? user.org;
+  const branding = resolveBranding(org);
   return {
     userId: user.id,
     orgId: user.orgId,
     email: user.email,
     name: user.name,
     role: user.role === "OWNER" ? "OWNER" : "STAFF",
-    orgName: org.name,
+    orgName: branding?.brandName ?? org.name,
     userStatus: user.status,
     subscriptionStatus: org.subscriptionStatus,
     trialEndsAt: org.trialEndsAt,
     joinCode: org.joinCode,
+    plan: asPlanId(org.plan),
+    branding,
   };
 }
 
