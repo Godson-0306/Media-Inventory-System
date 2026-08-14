@@ -7,6 +7,7 @@ import { joinWithToken } from "@/actions/members";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function JoinInviteForm({
   token,
@@ -66,9 +67,8 @@ export function JoinInviteForm({
       </div>
       <div>
         <Label htmlFor="invite-password">Password</Label>
-        <Input
+        <PasswordInput
           id="invite-password"
-          type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           minLength={8}

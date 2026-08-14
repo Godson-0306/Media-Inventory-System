@@ -7,6 +7,7 @@ import { joinWithCode } from "@/actions/members";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function JoinCodeForm() {
   const router = useRouter();
@@ -68,9 +69,8 @@ export function JoinCodeForm() {
       </div>
       <div>
         <Label htmlFor="join-password">Password</Label>
-        <Input
+        <PasswordInput
           id="join-password"
-          type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           minLength={8}

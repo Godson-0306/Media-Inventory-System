@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/empty-state";
@@ -156,14 +157,12 @@ export function WorkspaceConsole({
                     setNewPassword("");
                   }}
                 >
-                  <Input
-                    type="password"
+                  <PasswordInput
                     placeholder="Current password"
                     value={currentPassword}
                     onChange={(event) => setCurrentPassword(event.target.value)}
                   />
-                  <Input
-                    type="password"
+                  <PasswordInput
                     placeholder="New password"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
