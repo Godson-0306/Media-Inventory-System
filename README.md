@@ -27,6 +27,8 @@ npm run dev
 
 `AUTH_SECRET` must be at least 32 characters.
 
+Optional: set `GOOGLE_PLACES_API_KEY` (Places API New, server-only) so staff destination search uses Google. Without it, search falls back to Photon.
+
 ## Product surfaces
 
 - `/` — organization register / login

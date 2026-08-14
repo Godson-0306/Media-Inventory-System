@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { PlaceHit } from "@/lib/types";
+import { googleMapsUrl } from "@/lib/maps";
+import type { PlaceHit, PlaceSearchHit } from "@/lib/types";
 
 const PlaceMap = dynamic(
   () => import("@/components/maps/place-map").then((mod) => mod.PlaceMap),
@@ -21,7 +23,7 @@ export function PlacePicker({
   compact?: boolean;
 }) {
   const [query, setQuery] = useState(value?.label ?? "");
-  const [hits, setHits] = useState<PlaceHit[]>([]);
+  const [hits, setHits] = useState<PlaceSearchHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +39,7 @@ export function PlacePicker({
       setError(null);
       try {
         const response = await fetch(`/api/geo/search?q=${encodeURIComponent(q)}`);
-        const data = (await response.json()) as { places?: PlaceHit[]; error?: string };
+        const data = (await response.json()) as { places?: PlaceSearchHit[]; error?: string };
         if (!response.ok) {
           setHits([]);
           setError(data.error ?? "Search failed. Click the map to mark the place.");
@@ -56,6 +58,45 @@ export function PlacePicker({
     }, 350);
     return () => clearTimeout(handle);
   }, [query]);
+
+  async function pickHit(hit: PlaceSearchHit) {
+    if (
+      Number.isFinite(hit.latitude) &&
+      Number.isFinite(hit.longitude) &&
+      hit.latitude != null &&
+      hit.longitude != null
+    ) {
+      onChange({
+        label: hit.label,
+        address: hit.address,
+        latitude: hit.latitude,
+        longitude: hit.longitude,
+        placeId: hit.placeId,
+      });
+      setQuery(hit.label);
+      setHits([]);
+      return;
+    }
+    if (!hit.placeId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/geo/search?placeId=${encodeURIComponent(hit.placeId)}`);
+      const data = (await response.json()) as { places?: PlaceHit[]; error?: string };
+      const place = data.places?.[0];
+      if (!place) {
+        setError(data.error ?? "Could not load that Google place. Drop a pin on the map instead.");
+        return;
+      }
+      onChange(place);
+      setQuery(place.label);
+      setHits([]);
+    } catch {
+      setError("Could not load that Google place. Drop a pin on the map instead.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function dropPin(latitude: number, longitude: number) {
     setLoading(true);
@@ -92,7 +133,7 @@ export function PlacePicker({
         }}
       />
       <p className="text-xs text-muted-foreground">
-        Pick a search result or tap the map to pin where the kit is going. That pin is saved on the life record.
+        Pick a search result or tap the map to pin where the kit is going. You can confirm the place in Google Maps after it is marked.
       </p>
       {loading ? (
         <p className="text-xs text-muted-foreground">Updating map...</p>
@@ -102,13 +143,11 @@ export function PlacePicker({
         <div className="max-h-40 overflow-auto rounded-lg border border-border bg-card">
           {hits.map((hit) => (
             <button
-              key={`${hit.latitude}-${hit.longitude}-${hit.address}`}
+              key={hit.placeId ?? `${hit.latitude}-${hit.longitude}-${hit.address}`}
               type="button"
               className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
               onClick={() => {
-                onChange(hit);
-                setQuery(hit.label);
-                setHits([]);
+                void pickHit(hit);
               }}
             >
               <span className="font-medium">{hit.label}</span>
@@ -118,9 +157,18 @@ export function PlacePicker({
         </div>
       ) : null}
       {value ? (
-        <p className="text-xs text-emerald-400">
-          Marked: {value.address}
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-xs text-emerald-400">Marked: {value.address}</p>
+          <a
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            href={googleMapsUrl(value.latitude, value.longitude)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink className="h-3 w-3" />
+            View in Google Maps
+          </a>
+        </div>
       ) : null}
       <PlaceMap
         className={`${compact ? "h-40" : "h-56"} w-full rounded-xl border border-border`}

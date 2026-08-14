@@ -74,6 +74,15 @@ export type PlaceHit = {
   address: string;
   latitude: number;
   longitude: number;
+  placeId?: string;
+};
+
+export type PlaceSearchHit = {
+  label: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+  placeId?: string;
 };
 
 export type TimelineEvent = {

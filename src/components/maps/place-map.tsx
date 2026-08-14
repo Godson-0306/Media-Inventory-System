@@ -86,9 +86,11 @@ export function PlaceMap({
     });
 
     const resize = window.setTimeout(() => map.invalidateSize(), 80);
+    const resizeAgain = window.setTimeout(() => map.invalidateSize(), 320);
 
     return () => {
       window.clearTimeout(resize);
+      window.clearTimeout(resizeAgain);
       map.remove();
     };
   }, [pinKey]);

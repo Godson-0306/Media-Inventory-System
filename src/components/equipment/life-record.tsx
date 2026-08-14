@@ -2,12 +2,14 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { ExternalLink, Maximize2, X } from "lucide-react";
 import { Badge, Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
 import { useRefreshWhile } from "@/hooks/use-refresh-while";
-import { actionLabel, formatDate, formatDateTime, formatRelativeTime, statusLabel } from "@/lib/utils";
+import { actionLabel, cn, formatDate, formatDateTime, formatRelativeTime, statusLabel } from "@/lib/utils";
+import { googleMapsUrl } from "@/lib/maps";
 import type { EquipmentDTO, FaultDTO, LocationPingDTO, RentalDTO, TimelineEvent } from "@/lib/types";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { deleteEquipment, updateEquipment } from "@/actions/equipment";
@@ -53,7 +55,22 @@ export function LifeRecord({
     warrantyDate: dateInputValue(equipment.warrantyDate),
     conditionNotes: equipment.conditionNotes,
   });
+  const [mapOpen, setMapOpen] = useState(false);
   useRefreshWhile(equipment.status === "SIGNED_OUT");
+
+  useEffect(() => {
+    if (!mapOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setMapOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mapOpen]);
 
   const destinationPin =
     equipment.latitude !== null && equipment.longitude !== null
@@ -94,6 +111,7 @@ export function LifeRecord({
   }));
 
   const liveLabel = formatRelativeTime(equipment.liveUpdatedAt);
+  const googlePin = livePin ?? destinationPin;
 
   return (
     <div className="space-y-6">
@@ -180,7 +198,28 @@ export function LifeRecord({
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="p-4">
-          <h2 className="mb-3 font-medium">Current location</h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-medium">Current location</h2>
+            {currentPins.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => setMapOpen(true)}>
+                  <Maximize2 className="h-4 w-4" />
+                  Expand map
+                </Button>
+                {googlePin ? (
+                  <a
+                    className={mapLinkClass}
+                    href={googleMapsUrl(googlePin.latitude, googlePin.longitude)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open in Google Maps
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
           <PlaceMap pins={currentPins} path={trail} />
           {livePin ? (
             <p className="mt-2 text-sm text-emerald-400">
@@ -261,9 +300,44 @@ export function LifeRecord({
           </div>
         </Card>
       ) : null}
+      {mapOpen ? (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+            <div>
+              <p className="font-medium">{equipment.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {livePin ? "Live pin vs job destination" : equipment.locationLabel ?? "Map"}
+                {liveLabel ? ` · updated ${liveLabel}` : ""}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {googlePin ? (
+                <a
+                  className={mapLinkClass}
+                  href={googleMapsUrl(googlePin.latitude, googlePin.longitude)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open in Google Maps
+                </a>
+              ) : null}
+              <Button type="button" size="sm" variant="outline" onClick={() => setMapOpen(false)}>
+                <X className="h-4 w-4" />
+                Close
+              </Button>
+            </div>
+          </div>
+          <PlaceMap className="h-[calc(100dvh-3.75rem)] w-full" pins={currentPins} path={trail} />
+        </div>
+      ) : null}
     </div>
   );
 }
+
+const mapLinkClass = cn(
+  "inline-flex h-8 items-center justify-center gap-2 rounded-lg border border-border px-3 text-xs font-medium hover:bg-muted",
+);
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (

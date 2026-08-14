@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { reverseGeocode, searchPlaces } from "@/lib/geo";
+import { getPlaceDetails, reverseGeocode, searchPlaces } from "@/lib/geo";
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q") ?? "";
+  const placeId = request.nextUrl.searchParams.get("placeId") ?? "";
   const lat = Number(request.nextUrl.searchParams.get("lat"));
   const lng = Number(request.nextUrl.searchParams.get("lng"));
 
   try {
+    if (placeId) {
+      const place = await getPlaceDetails(placeId);
+      return NextResponse.json({ places: place ? [place] : [] });
+    }
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
       const place = await reverseGeocode(lat, lng);
       return NextResponse.json({ places: [place] });
