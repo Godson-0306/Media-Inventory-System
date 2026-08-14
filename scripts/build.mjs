@@ -9,10 +9,22 @@ const usePostgres =
   databaseUrl.startsWith("postgres://") ||
   databaseUrl.startsWith("postgresql://");
 
-function run(command) {
-  const result = spawnSync(command, { stdio: "inherit", shell: true });
+function run(command, options = {}) {
+  const result = spawnSync(command, { stdio: "inherit", shell: true, ...options });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
+  }
+}
+
+function runSql(sql) {
+  const result = spawnSync("npx prisma db execute --stdin", {
+    input: sql,
+    shell: true,
+    encoding: "utf8",
+  });
+  if (result.status !== 0) {
+    console.warn("Optional SQL did not apply:", sql.trim());
+    if (result.stderr) console.warn(result.stderr);
   }
 }
 
@@ -31,7 +43,9 @@ if (usePostgres) {
 try {
   run("npx prisma generate");
   if (usePostgres) {
-    run("npx prisma db push");
+    runSql(`ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'STAFF';`);
+    runSql(`UPDATE "User" SET role = 'STAFF' WHERE role::text = 'OPERATOR';`);
+    run("npx prisma db push --accept-data-loss");
   }
   run("npx next build");
 } finally {
