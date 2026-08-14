@@ -75,47 +75,51 @@ export function AdminShell({
   );
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
-      <aside className="hidden border-r border-border bg-card/60 p-4 lg:flex lg:flex-col">
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
-          <Logo />
-          <div>
-            <p className="text-sm font-semibold">Admin Dashboard</p>
-            <p className="text-xs text-muted-foreground">{orgName}</p>
+    <div className="min-h-svh lg:h-svh lg:overflow-hidden">
+      <div className="min-h-svh lg:grid lg:h-svh lg:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="hidden border-r border-border bg-card/60 p-4 lg:flex lg:h-svh lg:flex-col lg:overflow-y-auto">
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
+            <Logo />
+            <div>
+              <p className="text-sm font-semibold">Admin Dashboard</p>
+              <p className="text-xs text-muted-foreground">{orgName}</p>
+            </div>
           </div>
-        </div>
-        <div className="flex-1">{nav}</div>
-        <Button
-          variant="ghost"
-          className="mt-4 justify-start"
-          onClick={() => router.push("/workspace")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to workspace
-        </Button>
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-border px-3 py-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
-            {userName.slice(0, 1).toUpperCase()}
-          </span>
-          <span className="text-sm">{userName}</span>
-        </div>
-      </aside>
-      <div>
-        <div className="flex items-center justify-between border-b border-border px-4 py-3 lg:hidden">
-          <Button variant="outline" size="icon" onClick={() => setOpen((value) => !value)}>
-            <Menu className="h-4 w-4" />
+          <div className="flex-1">{nav}</div>
+          <Button
+            variant="ghost"
+            className="mt-4 justify-start"
+            onClick={() => router.push("/workspace")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to workspace
           </Button>
-          <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-            Owner
-          </Badge>
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
+              {userName.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="text-sm">{userName}</span>
+          </div>
+        </aside>
+        <div className="flex min-h-svh flex-col lg:h-svh lg:min-h-0 lg:overflow-y-auto">
+          <div className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur lg:hidden">
+            <div className="flex items-center justify-between px-4 py-3">
+              <Button variant="outline" size="icon" onClick={() => setOpen((value) => !value)}>
+                <Menu className="h-4 w-4" />
+              </Button>
+              <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
+                Owner
+              </Badge>
+            </div>
+            {open ? <div className="border-t border-border p-4">{nav}</div> : null}
+          </div>
+          <div className="sticky top-0 z-20 hidden justify-end border-b border-border bg-background/95 px-6 py-4 backdrop-blur lg:flex">
+            <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
+              Owner
+            </Badge>
+          </div>
+          <div className="p-4 lg:p-6">{children}</div>
         </div>
-        {open ? <div className="border-b border-border p-4 lg:hidden">{nav}</div> : null}
-        <div className="hidden justify-end px-6 pt-6 lg:flex">
-          <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-            Owner
-          </Badge>
-        </div>
-        <div className="p-4 lg:p-6">{children}</div>
       </div>
       <IssuePanel
         issues={[
