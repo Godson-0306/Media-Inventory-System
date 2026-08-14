@@ -25,7 +25,7 @@ export async function createLocation(input: unknown) {
   const limits = planLimits(session.plan);
   if (capReached(count, limits.maxLocations)) {
     return {
-      error: `This plan allows ${limits.maxLocations} saved location${limits.maxLocations === 1 ? "" : "s"}. Upgrade to add more sites.`,
+      error: `This plan allows ${limits.maxLocations} office site${limits.maxLocations === 1 ? "" : "s"}. Upgrade to add more.`,
     };
   }
 
@@ -99,7 +99,7 @@ export async function deleteLocation(input: unknown) {
 
   const remaining = await prisma.orgLocation.count({ where: { orgId: session.orgId } });
   if (remaining <= 1) {
-    return { error: "Keep at least one saved location for sign-out destinations" };
+    return { error: "Keep at least one office or storage site" };
   }
 
   await prisma.activity.create({

@@ -129,7 +129,7 @@ export async function approveOperationRequest(requestId: string) {
     if (item.status !== "ACTIVE" && item.status !== "SIGNED_IN") {
       return { error: "This asset can no longer be signed out" };
     }
-    if (request.latitude == null || request.longitude == null || !request.locationLabel) {
+    if (!request.locationLabel) {
       return { error: "This sign-out request is missing a destination" };
     }
     await applyApprovedSignOut({

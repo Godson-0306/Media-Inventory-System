@@ -14,9 +14,11 @@ const PlaceMap = dynamic(
 export function PlacePicker({
   value,
   onChange,
+  compact = false,
 }: {
   value: PlaceHit | null;
   onChange: (place: PlaceHit | null) => void;
+  compact?: boolean;
 }) {
   const [query, setQuery] = useState(value?.label ?? "");
   const [hits, setHits] = useState<PlaceHit[]>([]);
@@ -79,10 +81,10 @@ export function PlacePicker({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="destination">Destination on the map</Label>
+      <Label htmlFor="destination">Job destination on the map</Label>
       <Input
         id="destination"
-        placeholder="Search a city, venue, or address"
+        placeholder="Search a venue, church, client, or address"
         value={query}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -90,7 +92,7 @@ export function PlacePicker({
         }}
       />
       <p className="text-xs text-muted-foreground">
-        Pick a search result or click the map to mark where this equipment is going. That pin is saved on the life record.
+        Pick a search result or tap the map to pin where the kit is going. That pin is saved on the life record.
       </p>
       {loading ? (
         <p className="text-xs text-muted-foreground">Updating map...</p>
@@ -121,7 +123,7 @@ export function PlacePicker({
         </p>
       ) : null}
       <PlaceMap
-        className="h-56 w-full rounded-xl border border-border"
+        className={`${compact ? "h-40" : "h-56"} w-full rounded-xl border border-border`}
         pins={
           value
             ? [

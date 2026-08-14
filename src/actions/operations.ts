@@ -34,60 +34,68 @@ export async function signOutEquipment(input: unknown) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
   }
 
-  const item = await prisma.equipment.findFirst({
-    where: { id: parsed.data.equipmentId, orgId: session.orgId },
-  });
-  if (!item) return { error: "Equipment not found" };
-  if (item.status !== "ACTIVE" && item.status !== "SIGNED_IN") {
-    return { error: "Only active or signed-in equipment can be requested for sign-out" };
-  }
-  if (await pendingRequestFor(session.orgId, item.id)) {
-    return { error: "This asset already has a pending request" };
-  }
-
   const operator = await resolveOrgMember(session.orgId, parsed.data.operatorUserId);
   if (operator.error || !operator.member) return { error: operator.error ?? "Select a member" };
 
-  const location = await prisma.orgLocation.findFirst({
-    where: { id: parsed.data.locationId, orgId: session.orgId },
+  const items = await prisma.equipment.findMany({
+    where: { id: { in: parsed.data.equipmentIds }, orgId: session.orgId },
   });
-  if (!location) return { error: "Select a saved destination" };
+  if (items.length === 0) return { error: "Equipment not found" };
 
-  await prisma.operationRequest.create({
-    data: {
-      orgId: session.orgId,
-      equipmentId: item.id,
-      requesterId: session.userId,
-      operatorUserId: operator.member.id,
-      type: "SIGN_OUT",
-      operatorName: operator.member.name,
-      notes: parsed.data.notes ?? "",
-      locationLabel: location.name,
-      locationAddress: location.address ?? "",
-      latitude: location.latitude,
-      longitude: location.longitude,
-    },
-  });
-  await prisma.activity.create({
-    data: {
-      orgId: session.orgId,
-      userId: session.userId,
-      equipmentId: item.id,
-      action: "REQUEST_CREATED",
-      details: {
-        requestType: "SIGN_OUT",
-        operatorName: operator.member.name,
+  let sent = 0;
+  const skipped: string[] = [];
+
+  for (const item of items) {
+    if (item.status !== "ACTIVE" && item.status !== "SIGNED_IN") {
+      skipped.push(`${item.name}: not available to sign out`);
+      continue;
+    }
+    if (await pendingRequestFor(session.orgId, item.id)) {
+      skipped.push(`${item.name}: already has a pending request`);
+      continue;
+    }
+
+    await prisma.operationRequest.create({
+      data: {
+        orgId: session.orgId,
+        equipmentId: item.id,
+        requesterId: session.userId,
         operatorUserId: operator.member.id,
+        type: "SIGN_OUT",
+        operatorName: operator.member.name,
         notes: parsed.data.notes ?? "",
-        place: location.name,
-        address: location.address ?? "",
-        lat: location.latitude,
-        lng: location.longitude,
+        locationLabel: parsed.data.locationLabel,
+        locationAddress: parsed.data.locationAddress ?? "",
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
       },
-    },
-  });
-  refresh(item.id);
-  return { ok: true };
+    });
+    await prisma.activity.create({
+      data: {
+        orgId: session.orgId,
+        userId: session.userId,
+        equipmentId: item.id,
+        action: "REQUEST_CREATED",
+        details: {
+          requestType: "SIGN_OUT",
+          operatorName: operator.member.name,
+          operatorUserId: operator.member.id,
+          notes: parsed.data.notes ?? "",
+          place: parsed.data.locationLabel,
+          address: parsed.data.locationAddress ?? "",
+          lat: parsed.data.latitude,
+          lng: parsed.data.longitude,
+        },
+      },
+    });
+    refresh(item.id);
+    sent += 1;
+  }
+
+  if (sent === 0) {
+    return { error: skipped[0] ?? "None of the selected items can be signed out" };
+  }
+  return { ok: true, sent, skipped: skipped.length };
 }
 
 export async function signInEquipment(input: unknown) {
@@ -151,8 +159,8 @@ export async function applyApprovedSignOut(input: {
   notes: string;
   locationLabel: string;
   locationAddress: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
 }) {
   const now = new Date();
   await prisma.equipment.update({

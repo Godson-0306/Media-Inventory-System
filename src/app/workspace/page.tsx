@@ -20,13 +20,6 @@ export default async function WorkspacePage() {
       logoUrl={session.branding?.logoUrl}
       counts={data.counts}
       equipment={data.equipment.map(toEquipmentDTO)}
-      locations={data.locations.map((location) => ({
-        id: location.id,
-        name: location.name,
-        address: location.address,
-        latitude: location.latitude,
-        longitude: location.longitude,
-      }))}
       pendingRequests={data.operationRequests.map(toOperationRequestDTO)}
       members={data.members
         .filter((member) => member.status === "ACTIVE")

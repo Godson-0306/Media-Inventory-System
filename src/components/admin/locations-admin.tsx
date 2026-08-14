@@ -30,21 +30,22 @@ export function LocationsAdmin({
       <div>
         <h1 className="text-3xl font-semibold">Locations</h1>
         <p className="text-sm text-muted-foreground">
-          Named sites used when staff request a sign-out destination.
+          Office and storage addresses for this company. Staff return kit here on sign-in. Job
+          destinations are entered on the map when they request a sign-out.
         </p>
       </div>
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="p-4">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-medium">Saved sites</h2>
+            <h2 className="font-medium">Office / storage sites</h2>
             <span className="text-sm text-muted-foreground">
               {formatCap(locations.length, maxLocations, "locations")}
             </span>
           </div>
           {locations.length === 0 ? (
             <EmptyState
-              title="No locations yet"
-              description="Add Storage / cage or another site on the right."
+              title="No office sites yet"
+              description="Add the storage cage or office address on the right."
             />
           ) : (
             <div className="space-y-2">
@@ -100,7 +101,9 @@ export function LocationsAdmin({
           )}
         </Card>
         <Card className="p-4">
-          <h2 className="mb-4 font-medium">{editingId ? "Edit location" : "Add location"}</h2>
+          <h2 className="mb-4 font-medium">
+            {editingId ? "Edit office site" : "Add office / storage site"}
+          </h2>
           {atCap ? (
             <p className="mb-3 text-sm text-amber-600 dark:text-amber-200">
               This plan is at its location cap. Upgrade to add more sites.
@@ -143,7 +146,7 @@ export function LocationsAdmin({
             </div>
             <div className="flex gap-2">
               <Button className="flex-1" disabled={pending || atCap}>
-                {pending ? "Saving..." : editingId ? "Save changes" : "Add location"}
+                {pending ? "Saving..." : editingId ? "Save changes" : "Add office site"}
               </Button>
               {editingId ? (
                 <Button

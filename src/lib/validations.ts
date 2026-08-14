@@ -68,8 +68,14 @@ export const operationSchema = z.object({
   notes: z.string().optional(),
 });
 
-export const signOutSchema = operationSchema.extend({
-  locationId: z.string().min(1, "Select a destination"),
+export const signOutSchema = z.object({
+  equipmentIds: z.array(z.string().min(1)).min(1, "Select at least one item"),
+  operatorUserId: z.string().min(1, "Select the member taking this kit"),
+  notes: z.string().optional(),
+  locationLabel: z.string().trim().min(2, "Enter where this equipment is going"),
+  locationAddress: z.string().optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
 });
 
 export const liveLocationSchema = z.object({
