@@ -29,6 +29,8 @@ npm run dev
 
 Optional: set `GOOGLE_PLACES_API_KEY` (Places API New, server-only) so staff destination search uses Google. Without it, search falls back to Photon.
 
+Optional: set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (Maps JavaScript API, browser) so the sign-out picker shows Street View, or a Google Map pin if that street has no coverage. Without it, the picker stays on OpenStreetMap.
+
 ## Product surfaces
 
 - `/` — organization register / login

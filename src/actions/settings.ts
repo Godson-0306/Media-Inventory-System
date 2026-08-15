@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { EquipmentCategory } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/auth";
-import { requireOwner, requireSession } from "@/lib/authz";
+import { requireOwner } from "@/lib/authz";
 import { passwordChangeSchema } from "@/lib/validations";
 import { capReached, planLimits } from "@/lib/plans";
 
@@ -140,7 +140,7 @@ export async function seedSampleKit() {
 }
 
 export async function changePassword(input: unknown) {
-  const auth = await requireSession();
+  const auth = await requireOwner();
   if (!auth.ok) return { error: auth.error };
   const session = auth.session;
   const parsed = passwordChangeSchema.safeParse(input);

@@ -12,34 +12,15 @@ export default async function WorkspacePage() {
 
   return (
     <OrgAccent branding={session.branding}>
-    <WorkspaceConsole
-      orgName={session.orgName}
-      userName={session.name}
-      userId={session.userId}
-      role={session.role}
-      logoUrl={session.branding?.logoUrl}
-      counts={data.counts}
-      equipment={data.equipment.map(toEquipmentDTO)}
-      pendingRequests={data.operationRequests.map(toOperationRequestDTO)}
-      members={data.members
-        .filter((member) => member.status === "ACTIVE")
-        .map((member) => ({
-          id: member.id,
-          name: member.name,
-          email: member.email,
-          role: member.role === "OWNER" ? "OWNER" : "STAFF",
-          status: member.status,
-          createdAt: member.createdAt.toISOString(),
-        }))}
-      activities={data.activities.map((item) => ({
-        id: item.id,
-        action: item.action,
-        createdAt: item.createdAt.toISOString(),
-        details: (item.details as Record<string, unknown> | null) ?? null,
-        userName: item.user?.name ?? null,
-        equipmentName: item.equipment?.name ?? null,
-      }))}
-    />
+      <WorkspaceConsole
+        orgName={session.orgName}
+        userName={session.name}
+        userId={session.userId}
+        role={session.role}
+        logoUrl={session.branding?.logoUrl}
+        equipment={data.equipment.map(toEquipmentDTO)}
+        pendingRequests={data.operationRequests.map(toOperationRequestDTO)}
+      />
     </OrgAccent>
   );
 }

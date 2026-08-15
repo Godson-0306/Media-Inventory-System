@@ -149,7 +149,7 @@ export function LiveTracker({
     <div className="border-b border-border bg-emerald-500/10 px-4 py-3 md:px-6" role="status">
       <p className="text-sm font-medium text-emerald-300">
         {status === "sharing"
-          ? `Sharing live location for ${names}. Keep this page open.`
+          ? `Sharing live location for ${names}. Keep this page open until the owner accepts sign-in.`
           : status === "denied"
             ? "Live location is blocked until you allow GPS for this site."
             : status === "error"
@@ -157,8 +157,8 @@ export function LiveTracker({
               : `Ready to share live location for ${names}.`}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Others in the organization can see the moving pin on the life record. Sharing stops if you
-        lock the phone, switch apps, or close this tab.
+        Live GPS continues while kit is signed out, including after you request sign-in. Sharing
+        stops if you lock the phone, switch apps, or close this tab.
       </p>
       {status === "denied" || status === "error" ? (
         <Button

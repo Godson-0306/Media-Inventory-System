@@ -5,11 +5,16 @@ import dynamic from "next/dynamic";
 import { ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { googleMapsUrl } from "@/lib/maps";
+import { googleMapsUrl, publicGoogleMapsKey } from "@/lib/maps";
 import type { PlaceHit, PlaceSearchHit } from "@/lib/types";
 
 const PlaceMap = dynamic(
   () => import("@/components/maps/place-map").then((mod) => mod.PlaceMap),
+  { ssr: false },
+);
+
+const GooglePlacePreview = dynamic(
+  () => import("@/components/maps/google-place-preview").then((mod) => mod.GooglePlacePreview),
   { ssr: false },
 );
 
@@ -26,6 +31,8 @@ export function PlacePicker({
   const [hits, setHits] = useState<PlaceSearchHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const useGooglePreview = Boolean(publicGoogleMapsKey());
+  const previewClass = `${compact ? (useGooglePreview ? "h-52" : "h-40") : "h-56"} w-full rounded-xl border border-border`;
 
   useEffect(() => {
     const q = query.trim();
@@ -133,7 +140,8 @@ export function PlacePicker({
         }}
       />
       <p className="text-xs text-muted-foreground">
-        Pick a search result or tap the map to pin where the kit is going. You can confirm the place in Google Maps after it is marked.
+        Search the job, pick a result, then confirm the Street View or map pin before you request sign
+        out.
       </p>
       {loading ? (
         <p className="text-xs text-muted-foreground">Updating map...</p>
@@ -170,21 +178,25 @@ export function PlacePicker({
           </a>
         </div>
       ) : null}
-      <PlaceMap
-        className={`${compact ? "h-40" : "h-56"} w-full rounded-xl border border-border`}
-        pins={
-          value
-            ? [
-                {
-                  latitude: value.latitude,
-                  longitude: value.longitude,
-                  label: value.label,
-                },
-              ]
-            : []
-        }
-        onPick={dropPin}
-      />
+      {useGooglePreview ? (
+        <GooglePlacePreview className={previewClass} value={value} onPick={dropPin} />
+      ) : (
+        <PlaceMap
+          className={previewClass}
+          pins={
+            value
+              ? [
+                  {
+                    latitude: value.latitude,
+                    longitude: value.longitude,
+                    label: value.label,
+                  },
+                ]
+              : []
+          }
+          onPick={dropPin}
+        />
+      )}
     </div>
   );
 }

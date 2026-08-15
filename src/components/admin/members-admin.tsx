@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createInvite, rotateJoinCode, setMemberStatus } from "@/actions/members";
+import { changePassword } from "@/actions/settings";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { EmptyState } from "@/components/empty-state";
 import { formatDateTime } from "@/lib/utils";
 import type { MemberDTO, OrgInviteDTO } from "@/lib/types";
@@ -22,6 +24,8 @@ export function MembersAdmin({
 }) {
   const [pending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   function inviteUrl(token: string) {
     if (typeof window === "undefined") return `/join/${token}`;
@@ -150,6 +154,48 @@ export function MembersAdmin({
                 Rotate
               </Button>
             </div>
+          </Card>
+          <Card className="p-4">
+            <h2 className="mb-2 font-medium">Your password</h2>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Only the organization owner can change this login password.
+            </p>
+            <form
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                startTransition(async () => {
+                  const result = await changePassword({ currentPassword, newPassword });
+                  if (result.error) {
+                    toast.error(result.error);
+                    return;
+                  }
+                  toast.success("Password updated");
+                  setCurrentPassword("");
+                  setNewPassword("");
+                });
+              }}
+            >
+              <div>
+                <Label htmlFor="current-password">Current password</Label>
+                <PasswordInput
+                  id="current-password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-password">New password</Label>
+                <PasswordInput
+                  id="new-password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                />
+              </div>
+              <Button className="w-full" disabled={pending}>
+                Change password
+              </Button>
+            </form>
           </Card>
           <Card className="p-4">
             <h2 className="mb-4 font-medium">Invite staff</h2>

@@ -114,6 +114,9 @@ export async function signInEquipment(input: unknown) {
   if (item.status !== "SIGNED_OUT") {
     return { error: "This asset is not currently signed out" };
   }
+  if (item.signedOutByUserId !== session.userId) {
+    return { error: "Only the person who has this kit can request sign-in" };
+  }
   if (await pendingRequestFor(session.orgId, item.id)) {
     return { error: "This asset already has a pending request" };
   }
