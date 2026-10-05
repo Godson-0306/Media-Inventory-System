@@ -1,7 +1,14 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSession, type SessionPayload, type UserRoleValue } from "@/lib/auth";
-import { ensureAuthBackfill, ensureOrgDefaults, isOrgActive, resolveBranding, type OrgBranding } from "@/lib/org";
+import {
+  ensureAuthBackfill,
+  ensureOrgDefaults,
+  isOrgActive,
+  resolveBranding,
+  restartStaleTrials,
+  type OrgBranding,
+} from "@/lib/org";
 import { asPlanId, type PlanId } from "@/lib/plans";
 import type { SubscriptionStatus, UserStatus } from "@prisma/client";
 
@@ -22,6 +29,7 @@ export async function getLiveSession(): Promise<LiveSession | null> {
   const cookieSession = await getSession();
   if (!cookieSession) return null;
   await ensureAuthBackfill();
+  await restartStaleTrials();
   const user = await prisma.user.findFirst({
     where: { id: cookieSession.userId },
     include: { org: true },

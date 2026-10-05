@@ -33,6 +33,7 @@ try {
   if (usePostgres) {
     run("node scripts/prepare-postgres.mjs");
     run("npx prisma db push --accept-data-loss");
+    run("npx tsx scripts/reset-trials.ts");
   }
   run("npx next build");
 } finally {

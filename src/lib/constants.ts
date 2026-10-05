@@ -35,3 +35,5 @@ export const SESSION_COOKIE = "aop_session";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 export const TRIAL_DAYS = 14;
 export const INVITE_MAX_AGE_DAYS = 7;
+/** One-shot: orgs whose trial ended before this date get a fresh 14 days. */
+export const STALE_TRIAL_RESET_BEFORE = new Date("2026-10-06T00:00:00.000Z");

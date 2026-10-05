@@ -1,11 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { HOME_LOCATION, INVITE_MAX_AGE_DAYS, TRIAL_DAYS } from "@/lib/constants";
+import { HOME_LOCATION, INVITE_MAX_AGE_DAYS, STALE_TRIAL_RESET_BEFORE, TRIAL_DAYS } from "@/lib/constants";
 import type { SubscriptionPlan, SubscriptionStatus } from "@prisma/client";
 import { hasCustomInterface } from "@/lib/plans";
 
 const JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 let backfilledRoles = false;
+let staleTrialsRestarted = false;
 
 export async function ensureAuthBackfill() {
   if (backfilledRoles) return;
@@ -21,6 +22,27 @@ export async function ensureAuthBackfill() {
 
 export function trialEndsAtFromNow() {
   return new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+}
+
+export async function restartStaleTrials() {
+  if (staleTrialsRestarted) return;
+  try {
+    const result = await prisma.organization.updateMany({
+      where: {
+        OR: [{ trialEndsAt: { lt: STALE_TRIAL_RESET_BEFORE } }, { trialEndsAt: null }],
+      },
+      data: {
+        subscriptionStatus: "TRIAL",
+        trialEndsAt: trialEndsAtFromNow(),
+      },
+    });
+    staleTrialsRestarted = true;
+    if (result.count > 0) {
+      console.info(`Restarted ${result.count} organization trial(s)`);
+    }
+  } catch (error) {
+    console.error("Could not restart stale trials", error);
+  }
 }
 
 export function inviteExpiresAt() {

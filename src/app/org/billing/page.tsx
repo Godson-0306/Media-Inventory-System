@@ -61,6 +61,22 @@ export default async function BillingPage() {
                   ? ` · trial ends ${session.trialEndsAt.toLocaleDateString()}`
                   : ""}
               </p>
+              {active ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    href="/workspace"
+                    className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+                  >
+                    Open workspace
+                  </Link>
+                  <Link
+                    href="/admin"
+                    className="inline-flex h-11 items-center rounded-lg border border-border px-4 text-sm hover:bg-muted"
+                  >
+                    Open admin
+                  </Link>
+                </div>
+              ) : null}
             </>
           ) : (
             <>

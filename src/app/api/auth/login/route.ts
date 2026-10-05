@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations";
 import { SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/constants";
-import { ensureAuthBackfill } from "@/lib/org";
+import { ensureAuthBackfill, restartStaleTrials } from "@/lib/org";
 
 export async function POST(request: Request) {
   try {
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
 
     const email = parsed.data.email.toLowerCase();
     await ensureAuthBackfill();
+    await restartStaleTrials();
     const user = await prisma.user.findFirst({
       where: { email },
       include: { org: true },
