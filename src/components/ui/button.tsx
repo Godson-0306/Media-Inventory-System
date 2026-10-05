@@ -14,10 +14,10 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-white hover:bg-red-500",
       },
       size: {
-        default: "h-10 px-4",
-        sm: "h-8 px-3 text-xs",
-        lg: "h-11 px-5",
-        icon: "h-10 w-10",
+        default: "h-11 px-4",
+        sm: "h-10 px-3 text-xs",
+        lg: "h-12 px-5",
+        icon: "h-11 w-11",
       },
     },
     defaultVariants: {

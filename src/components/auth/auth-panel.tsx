@@ -57,32 +57,36 @@ export function AuthPanel({
   }
 
   const tabs: Array<{ id: Mode; label: string }> = loginOnly
-    ? [{ id: "login", label: "Login" }]
+    ? [{ id: "login", label: "Log in" }]
     : [
-        { id: "login", label: "Login" },
-        { id: "register", label: "Register company" },
+        { id: "login", label: "Log in" },
+        { id: "register", label: "Create company" },
         { id: "join", label: "Join with code" },
       ];
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-xl">
-      <div className={cn("mb-6 rounded-lg bg-muted p-1", loginOnly ? "grid grid-cols-1" : "grid grid-cols-3")}>
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setMode(item.id)}
-            className={cn(
-              "rounded-md px-1 py-2 text-xs font-medium sm:text-sm",
-              mode === item.id
-                ? "bg-background text-foreground shadow"
-                : "text-muted-foreground",
-            )}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-xl sm:p-6">
+      {loginOnly ? (
+        <p className="mb-5 text-lg font-semibold">Log in</p>
+      ) : (
+        <div className="mb-5 grid gap-2">
+          {tabs.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setMode(item.id)}
+              className={cn(
+                "h-11 w-full rounded-xl text-sm font-semibold",
+                mode === item.id
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-border bg-background text-foreground",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
       {mode === "join" ? (
         <JoinCodeForm />
       ) : (
@@ -90,7 +94,7 @@ export function AuthPanel({
           {mode === "register" ? (
             <>
               <div>
-                <Label htmlFor="org">Organization Name</Label>
+                <Label htmlFor="org">Company name</Label>
                 <Input
                   id="org"
                   value={organizationName}
@@ -116,6 +120,8 @@ export function AuthPanel({
             <Input
               id="email"
               type="email"
+              autoComplete="email"
+              inputMode="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@organization.com"
@@ -126,6 +132,7 @@ export function AuthPanel({
             <Label htmlFor="password">Password</Label>
             <PasswordInput
               id="password"
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               minLength={mode === "register" ? 8 : 1}
@@ -136,8 +143,8 @@ export function AuthPanel({
             {loading
               ? "Working..."
               : mode === "register"
-                ? "Create organization"
-                : "Sign in"}
+                ? "Create company"
+                : "Log in"}
           </Button>
         </form>
       )}

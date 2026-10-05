@@ -12,7 +12,8 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "db:reset-trials": "tsx scripts/reset-trials.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",

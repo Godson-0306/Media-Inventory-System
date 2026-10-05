@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LogOut, Search, Shield } from "lucide-react";
@@ -96,6 +96,9 @@ export function WorkspaceConsole({
     });
   }, [category, equipment, query, sort]);
 
+  const available = filtered.filter((item) => item.status !== "SIGNED_OUT");
+  const signedOut = filtered.filter((item) => item.status === "SIGNED_OUT");
+
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
@@ -149,22 +152,14 @@ export function WorkspaceConsole({
     });
   }
 
-  const signOutPanel = signOutEligible.length > 0 && (isXl || signOutOpen) ? (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">
-          {signOutEligible.length} selected · pin the job, then request sign out
-        </p>
-        <Button type="button" size="sm" variant="outline" onClick={() => setSelectedIds([])}>
-          Clear
-        </Button>
-      </div>
+  const signOutBody = signOutEligible.length > 0 ? (
+    <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {signOutEligible.map((item) => (
           <button
             key={item.id}
             type="button"
-            className="rounded-full border border-border bg-background px-2.5 py-1 text-xs"
+            className="min-h-11 rounded-full border border-border bg-background px-3 py-2 text-sm"
             onClick={() => toggleSelected(item.id)}
           >
             {item.name} ×
@@ -172,14 +167,6 @@ export function WorkspaceConsole({
         ))}
       </div>
       <PlacePicker compact={!isXl} value={destination} onChange={setDestination} />
-      <Button
-        className="w-full"
-        disabled={pending || !destination}
-        onClick={requestSignOut}
-      >
-        Request sign out
-        {signOutEligible.length > 1 ? ` (${signOutEligible.length})` : ""}
-      </Button>
     </div>
   ) : null;
 
@@ -187,48 +174,34 @@ export function WorkspaceConsole({
     <div className="min-h-screen overflow-x-hidden bg-background">
       <LiveTracker userId={userId} equipment={equipment} />
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3" title={userName}>
             <Logo src={logoUrl} alt={orgName} />
-            <div className="min-w-0">
-              <p className="truncate font-semibold">{orgName}</p>
-              <p className="text-xs text-muted-foreground">Field workspace</p>
-            </div>
+            <p className="truncate font-semibold">{orgName}</p>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
             {role === "OWNER" ? (
               <Button variant="outline" onClick={() => router.push("/admin")}>
                 <Shield className="h-4 w-4" />
-                <span className="hidden sm:inline">Admin dashboard</span>
-                <span className="sm:hidden">Admin</span>
+                Admin
               </Button>
             ) : null}
-            <Button variant="outline" onClick={logout}>
+            <Button variant="outline" onClick={logout} aria-label="Log out">
               <LogOut className="h-4 w-4" />
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </Button>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
-              {userName.slice(0, 1).toUpperCase()}
-            </span>
           </div>
         </div>
       </header>
 
       <div className="grid gap-4 p-4 pb-28 xl:grid-cols-[minmax(0,1fr)_380px] xl:p-6 xl:pb-6">
         <Card className="flex flex-col p-4">
-          <div className="mb-4">
-            <h2 className="font-semibold">Equipment</h2>
-            <p className="text-xs text-muted-foreground">
-              {equipment.length} items
-              {selectedIds.length > 0 ? ` · ${signOutEligible.length} selected` : ""}
-            </p>
-          </div>
           <div className="relative mb-3">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Search equipment..."
+              placeholder="Search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -248,89 +221,61 @@ export function WorkspaceConsole({
               <option value="serial">Sort: Serial</option>
             </Select>
           </div>
-          {filtered.some(canSelect) ? (
+          {available.some(canSelect) ? (
             <div className="mb-3 flex flex-wrap gap-2">
               <Button
                 type="button"
-                size="sm"
                 variant="outline"
-                onClick={() => setSelectedIds(filtered.filter(canSelect).map((item) => item.id))}
+                onClick={() => setSelectedIds(available.filter(canSelect).map((item) => item.id))}
               >
                 Select available
               </Button>
               {selectedIds.length > 0 ? (
-                <Button type="button" size="sm" variant="outline" onClick={() => setSelectedIds([])}>
+                <Button type="button" variant="outline" onClick={() => setSelectedIds([])}>
                   Clear
                 </Button>
               ) : null}
             </div>
           ) : null}
-          <div className="flex-1 space-y-2 overflow-auto">
+          <div className="flex-1 space-y-5 overflow-auto">
             {filtered.length === 0 ? (
               <EmptyState
                 title="No equipment found"
                 description="Try a different search or category."
               />
             ) : (
-              filtered.map((item) => {
-                const selectable = canSelect(item);
-                const isSelected = selectable && selectedIds.includes(item.id);
-                const pendingRequest = pendingByEquipment.get(item.id);
-                const isHolder =
-                  item.status === "SIGNED_OUT" && item.signedOutByUserId === userId;
-                const signInPending = pendingRequest?.type === "SIGN_IN";
-
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "flex w-full items-start gap-3 rounded-lg border px-3 py-2",
-                      isSelected
-                        ? "border-primary bg-primary/10"
-                        : selectable
-                          ? "border-border hover:bg-muted/50"
-                          : "border-border bg-muted/20 opacity-80",
-                    )}
-                  >
-                    {selectable ? (
-                      <button
-                        type="button"
-                        className="flex min-w-0 flex-1 items-start gap-3 text-left"
-                        onClick={() => toggleSelected(item.id)}
-                        aria-pressed={isSelected}
-                      >
-                        <span
-                          className={cn(
-                            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px]",
-                            isSelected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-muted-foreground/40",
-                          )}
-                          aria-hidden
-                        >
-                          {isSelected ? "✓" : ""}
-                        </span>
-                        <KitMeta item={item} pendingRequest={pendingRequest} />
-                      </button>
-                    ) : (
-                      <div className="min-w-0 flex-1">
-                        <KitMeta item={item} pendingRequest={pendingRequest} />
-                      </div>
-                    )}
-                    {isHolder ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={signInPending ? "outline" : "default"}
-                        disabled={pending || signInPending}
-                        onClick={() => requestSignIn(item.id)}
-                      >
-                        {signInPending ? "Sign-in requested" : "Sign in"}
-                      </Button>
-                    ) : null}
-                  </div>
-                );
-              })
+              <>
+                <EquipmentGroup title="Available" count={available.length}>
+                  {available.map((item) => (
+                    <EquipmentRow
+                      key={item.id}
+                      item={item}
+                      userId={userId}
+                      pendingRequest={pendingByEquipment.get(item.id)}
+                      selectable={canSelect(item)}
+                      selected={canSelect(item) && selectedIds.includes(item.id)}
+                      pending={pending}
+                      onToggle={() => toggleSelected(item.id)}
+                      onSignIn={() => requestSignIn(item.id)}
+                    />
+                  ))}
+                </EquipmentGroup>
+                <EquipmentGroup title="Signed out" count={signedOut.length}>
+                  {signedOut.map((item) => (
+                    <EquipmentRow
+                      key={item.id}
+                      item={item}
+                      userId={userId}
+                      pendingRequest={pendingByEquipment.get(item.id)}
+                      selectable={false}
+                      selected={false}
+                      pending={pending}
+                      onToggle={() => undefined}
+                      onSignIn={() => requestSignIn(item.id)}
+                    />
+                  ))}
+                </EquipmentGroup>
+              </>
             )}
           </div>
         </Card>
@@ -338,12 +283,22 @@ export function WorkspaceConsole({
         <Card className="hidden p-4 xl:block">
           <h2 className="font-semibold">Sign out</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Select available kit, pin the job, then send a request. Signed-out items stay with the
-            person who has them until the owner accepts sign-in.
+            Select available kit, pin the job, then send a request.
           </p>
-          <div className="mt-4">
+          <div className="mt-4 space-y-4">
             {signOutEligible.length > 0 ? (
-              signOutPanel
+              <>
+                {signOutBody}
+                <Button
+                  className="w-full"
+                  size="lg"
+                  disabled={pending || !destination}
+                  onClick={requestSignOut}
+                >
+                  Request sign out
+                  {signOutEligible.length > 1 ? ` (${signOutEligible.length})` : ""}
+                </Button>
+              </>
             ) : (
               <EmptyState
                 title="Select kit to sign out"
@@ -356,7 +311,7 @@ export function WorkspaceConsole({
 
       {!isXl && signOutEligible.length > 0 && !signOutOpen ? (
         <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl">
-          <Button className="w-full" onClick={() => setSignOutOpen(true)}>
+          <Button className="w-full" size="lg" onClick={() => setSignOutOpen(true)}>
             Proceed to sign out
             {signOutEligible.length > 1 ? ` (${signOutEligible.length})` : ""}
           </Button>
@@ -364,15 +319,124 @@ export function WorkspaceConsole({
       ) : null}
 
       {!isXl && signOutOpen && signOutEligible.length > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="font-medium">Proceed to sign out</p>
-            <Button type="button" size="sm" variant="outline" onClick={() => setSignOutOpen(false)}>
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div>
+              <p className="font-semibold">Sign out</p>
+              <p className="text-sm text-muted-foreground">
+                {signOutEligible.length} selected · pin the job
+              </p>
+            </div>
+            <Button type="button" variant="outline" onClick={() => setSignOutOpen(false)}>
               Close
             </Button>
+          </header>
+          <div className="flex-1 overflow-y-auto p-4">{signOutBody}</div>
+          <div className="border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={pending || !destination}
+              onClick={requestSignOut}
+            >
+              Request sign out
+              {signOutEligible.length > 1 ? ` (${signOutEligible.length})` : ""}
+            </Button>
           </div>
-          {signOutPanel}
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EquipmentGroup({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: number;
+  children: ReactNode;
+}) {
+  if (count === 0) return null;
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        <span className="text-xs text-muted-foreground">{count}</span>
+      </div>
+      <div className="space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function EquipmentRow({
+  item,
+  userId,
+  pendingRequest,
+  selectable,
+  selected,
+  pending,
+  onToggle,
+  onSignIn,
+}: {
+  item: EquipmentDTO;
+  userId: string;
+  pendingRequest?: OperationRequestDTO;
+  selectable: boolean;
+  selected: boolean;
+  pending: boolean;
+  onToggle: () => void;
+  onSignIn: () => void;
+}) {
+  const isHolder = item.status === "SIGNED_OUT" && item.signedOutByUserId === userId;
+  const signInPending = pendingRequest?.type === "SIGN_IN";
+
+  return (
+    <div
+      className={cn(
+        "flex w-full items-center gap-3 rounded-xl border px-3 py-3",
+        selected
+          ? "border-primary bg-primary/10"
+          : selectable
+            ? "border-border"
+            : "border-border bg-muted/20",
+      )}
+    >
+      {selectable ? (
+        <button
+          type="button"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left"
+          onClick={onToggle}
+          aria-pressed={selected}
+        >
+          <span
+            className={cn(
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs",
+              selected
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-muted-foreground/40",
+            )}
+            aria-hidden
+          >
+            {selected ? "✓" : ""}
+          </span>
+          <KitMeta item={item} pendingRequest={pendingRequest} />
+        </button>
+      ) : (
+        <div className="min-w-0 flex-1">
+          <KitMeta item={item} pendingRequest={pendingRequest} />
+        </div>
+      )}
+      {isHolder ? (
+        <Button
+          type="button"
+          variant={signInPending ? "outline" : "default"}
+          disabled={pending || signInPending}
+          onClick={onSignIn}
+        >
+          {signInPending ? "Requested" : "Sign in"}
+        </Button>
       ) : null}
     </div>
   );
@@ -387,15 +451,38 @@ function KitMeta({
 }) {
   return (
     <span className="min-w-0">
-      <p className="text-sm font-medium">{item.name}</p>
-      <p className="text-xs text-muted-foreground">
-        {item.serialNumber} · {statusLabel(item.status)}
-        {item.locationLabel ? ` · ${item.locationLabel}` : ""}
-        {pendingRequest ? ` · ${requestTypeLabel(pendingRequest.type)} requested` : ""}
-        {item.status === "SIGNED_OUT" && item.liveUpdatedAt
-          ? ` · Live · ${formatRelativeTime(item.liveUpdatedAt)}`
-          : ""}
-      </p>
+      <span className="flex items-center gap-2">
+        <p className="truncate text-base font-medium">{item.name}</p>
+        <StatusChip status={item.status} />
+      </span>
+      {pendingRequest ? (
+        <p className="text-xs text-muted-foreground">
+          {requestTypeLabel(pendingRequest.type)} requested
+        </p>
+      ) : item.status === "SIGNED_OUT" && item.liveUpdatedAt ? (
+        <p className="text-xs text-muted-foreground">
+          Live · {formatRelativeTime(item.liveUpdatedAt)}
+        </p>
+      ) : item.locationLabel ? (
+        <p className="truncate text-xs text-muted-foreground">{item.locationLabel}</p>
+      ) : null}
+    </span>
+  );
+}
+
+function StatusChip({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        status === "SIGNED_OUT"
+          ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+          : status === "FAULTY"
+            ? "bg-destructive/15 text-destructive"
+            : "bg-muted text-muted-foreground",
+      )}
+    >
+      {statusLabel(status)}
     </span>
   );
 }
