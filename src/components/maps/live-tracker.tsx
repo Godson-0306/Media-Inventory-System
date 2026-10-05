@@ -63,6 +63,18 @@ export function LiveTracker({
     let watchId: number | null = null;
     let wakeLock: WakeLockSentinel | null = null;
 
+    async function ensureNativeLocationPermission() {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return true;
+        const { Geolocation } = await import("@capacitor/geolocation");
+        const status = await Geolocation.requestPermissions({ permissions: ["location"] });
+        return status.location === "granted" || status.coarseLocation === "granted";
+      } catch {
+        return true;
+      }
+    }
+
     async function requestWakeLock() {
       try {
         wakeLock = (await navigator.wakeLock?.request("screen")) ?? null;
@@ -108,23 +120,32 @@ export function LiveTracker({
 
     setStatus("sharing");
     setDetail(null);
-    void requestWakeLock();
-    watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        void publish(position);
-      },
-      (error) => {
-        if (cancelled) return;
-        if (error.code === error.PERMISSION_DENIED) {
-          setStatus("denied");
-          setDetail("Location permission is required to share a live pin.");
-          return;
-        }
-        setStatus("error");
-        setDetail(error.message || "Could not read phone location.");
-      },
-      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 },
-    );
+    void (async () => {
+      const allowed = await ensureNativeLocationPermission();
+      if (cancelled) return;
+      if (!allowed) {
+        setStatus("denied");
+        setDetail("Location permission is required to share a live pin.");
+        return;
+      }
+      void requestWakeLock();
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          void publish(position);
+        },
+        (error) => {
+          if (cancelled) return;
+          if (error.code === error.PERMISSION_DENIED) {
+            setStatus("denied");
+            setDetail("Location permission is required to share a live pin.");
+            return;
+          }
+          setStatus("error");
+          setDetail(error.message || "Could not read phone location.");
+        },
+        { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 },
+      );
+    })();
 
     function onVisibility() {
       if (document.visibilityState === "visible") {

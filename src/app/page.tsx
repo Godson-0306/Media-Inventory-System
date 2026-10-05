@@ -7,6 +7,7 @@ import {
 import { Logo } from "@/components/brand/logo";
 import { AuthPanel } from "@/components/auth/auth-panel";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { AndroidDownloadCard } from "@/components/android/download-card";
 
 const features = [
   {
@@ -70,11 +71,17 @@ export default function HomePage() {
             </div>
             <p className="mt-8 text-sm text-muted-foreground">
               Designed for churches, media teams, production companies, and event operations.
+              Staff can also{" "}
+              <a href="/download" className="text-primary hover:underline">
+                install the Android app
+              </a>
+              .
             </p>
           </div>
         </section>
-        <section className="mx-auto w-full max-w-md lg:mx-0 lg:max-w-none">
+        <section className="mx-auto w-full max-w-md space-y-4 lg:mx-0 lg:max-w-none">
           <AuthPanel />
+          <AndroidDownloadCard compact />
         </section>
       </div>
     </main>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Asset Operations</string>
+    <string name="title_activity_main">Asset Operations</string>
+    <string name="package_name">com.gtech.assetops</string>
+    <string name="custom_url_scheme">com.gtech.assetops</string>
+</resources>
