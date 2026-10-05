@@ -39,7 +39,7 @@ jobs:
 
       - name: Sync Android project
         working-directory: mobile
-        run: npx cap sync android --verbose
+        run: npx cap sync android
 
       - name: Keep location permissions
         working-directory: mobile
