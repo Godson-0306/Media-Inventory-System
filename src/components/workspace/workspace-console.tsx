@@ -159,7 +159,7 @@ export function WorkspaceConsole({
           <button
             key={item.id}
             type="button"
-            className="min-h-11 rounded-full border border-border bg-background px-3 py-2 text-sm"
+            className="min-h-11 max-w-full break-words rounded-full border border-border bg-background px-3 py-2 text-left text-sm [overflow-wrap:anywhere]"
             onClick={() => toggleSelected(item.id)}
           >
             {item.name} ×
@@ -173,30 +173,42 @@ export function WorkspaceConsole({
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
       <LiveTracker userId={userId} equipment={equipment} />
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:px-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3" title={userName}>
-            <Logo src={logoUrl} alt={orgName} />
-            <p className="truncate font-semibold">{orgName}</p>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-3 py-3 backdrop-blur sm:px-4 md:px-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2" title={userName}>
+            <Logo src={logoUrl} alt={orgName} className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
+            <p className="min-w-0 truncate font-semibold" title={orgName}>
+              {orgName}
+            </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <ThemeToggle />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <ThemeToggle className="h-10 w-10" />
             {role === "OWNER" ? (
-              <Button variant="outline" onClick={() => router.push("/admin")}>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10"
+                onClick={() => router.push("/admin")}
+                aria-label="Admin"
+              >
                 <Shield className="h-4 w-4" />
-                Admin
               </Button>
             ) : null}
-            <Button variant="outline" onClick={logout} aria-label="Log out">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10"
+              onClick={logout}
+              aria-label="Log out"
+            >
               <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="grid gap-4 p-4 pb-28 xl:grid-cols-[minmax(0,1fr)_380px] xl:p-6 xl:pb-6">
-        <Card className="flex flex-col p-4">
+      <div className="grid min-w-0 gap-4 p-3 pb-28 sm:p-4 xl:grid-cols-[minmax(0,1fr)_380px] xl:p-6 xl:pb-6">
+        <Card className="flex min-w-0 flex-col p-3 sm:p-4">
           <div className="relative mb-3">
             <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -206,7 +218,7 @@ export function WorkspaceConsole({
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <div className="mb-3 grid grid-cols-2 gap-2">
+          <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
             <Select value={category} onChange={(event) => setCategory(event.target.value)}>
               <option value="ALL">All categories</option>
               {CATEGORIES.map((item) => (
@@ -395,7 +407,7 @@ function EquipmentRow({
   return (
     <div
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl border px-3 py-3",
+        "flex w-full min-w-0 items-start gap-3 rounded-xl border px-3 py-3",
         selected
           ? "border-primary bg-primary/10"
           : selectable
@@ -406,13 +418,13 @@ function EquipmentRow({
       {selectable ? (
         <button
           type="button"
-          className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left"
+          className="flex min-h-11 min-w-0 flex-1 items-start gap-3 text-left"
           onClick={onToggle}
           aria-pressed={selected}
         >
           <span
             className={cn(
-              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs",
+              "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs",
               selected
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-muted-foreground/40",
@@ -431,6 +443,7 @@ function EquipmentRow({
       {isHolder ? (
         <Button
           type="button"
+          className="shrink-0"
           variant={signInPending ? "outline" : "default"}
           disabled={pending || signInPending}
           onClick={onSignIn}
@@ -449,23 +462,25 @@ function KitMeta({
   item: EquipmentDTO;
   pendingRequest?: OperationRequestDTO;
 }) {
+  const detail = pendingRequest
+    ? `${requestTypeLabel(pendingRequest.type)} requested`
+    : item.status === "SIGNED_OUT" && item.liveUpdatedAt
+      ? `Live · ${formatRelativeTime(item.liveUpdatedAt)}`
+      : item.locationLabel || null;
+
   return (
-    <span className="min-w-0">
-      <span className="flex items-center gap-2">
-        <p className="truncate text-base font-medium">{item.name}</p>
+    <span className="flex min-w-0 flex-1 flex-col gap-1">
+      <p className="break-words text-base font-medium leading-snug [overflow-wrap:anywhere]">
+        {item.name}
+      </p>
+      <span className="flex min-w-0 flex-wrap items-center gap-1.5">
         <StatusChip status={item.status} />
+        {detail ? (
+          <span className="min-w-0 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
+            {detail}
+          </span>
+        ) : null}
       </span>
-      {pendingRequest ? (
-        <p className="text-xs text-muted-foreground">
-          {requestTypeLabel(pendingRequest.type)} requested
-        </p>
-      ) : item.status === "SIGNED_OUT" && item.liveUpdatedAt ? (
-        <p className="text-xs text-muted-foreground">
-          Live · {formatRelativeTime(item.liveUpdatedAt)}
-        </p>
-      ) : item.locationLabel ? (
-        <p className="truncate text-xs text-muted-foreground">{item.locationLabel}</p>
-      ) : null}
     </span>
   );
 }
@@ -474,7 +489,7 @@ function StatusChip({ status }: { status: string }) {
   return (
     <span
       className={cn(
-        "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium",
         status === "SIGNED_OUT"
           ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
           : status === "FAULTY"
