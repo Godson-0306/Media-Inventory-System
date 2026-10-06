@@ -47,7 +47,7 @@ export async function signOutEquipment(input: unknown) {
 
   for (const item of items) {
     if (item.status !== "ACTIVE" && item.status !== "SIGNED_IN") {
-      skipped.push(`${item.name}: not available to sign out`);
+      skipped.push(`${item.name}: not available to check out`);
       continue;
     }
     if (await pendingRequestFor(session.orgId, item.id)) {
@@ -93,7 +93,7 @@ export async function signOutEquipment(input: unknown) {
   }
 
   if (sent === 0) {
-    return { error: skipped[0] ?? "None of the selected items can be signed out" };
+    return { error: skipped[0] ?? "None of the selected items can be checked out" };
   }
   return { ok: true, sent, skipped: skipped.length };
 }
@@ -112,10 +112,10 @@ export async function signInEquipment(input: unknown) {
   });
   if (!item) return { error: "Equipment not found" };
   if (item.status !== "SIGNED_OUT") {
-    return { error: "This asset is not currently signed out" };
+    return { error: "This asset is not currently checked out" };
   }
   if (item.signedOutByUserId !== session.userId) {
-    return { error: "Only the person who has this kit can request sign-in" };
+    return { error: "Only the person who has this kit can request a return" };
   }
   if (await pendingRequestFor(session.orgId, item.id)) {
     return { error: "This asset already has a pending request" };

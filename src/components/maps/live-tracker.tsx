@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { updateLiveLocation } from "@/actions/operations";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { EquipmentDTO } from "@/lib/types";
 
 const MOVE_THRESHOLD_METERS = 50;
@@ -42,6 +43,7 @@ export function LiveTracker({
   trackedRef.current = tracked;
 
   const [retry, setRetry] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState<"idle" | "sharing" | "denied" | "error">("idle");
   const [detail, setDetail] = useState<string | null>(null);
   const lastSent = useRef<{ latitude: number; longitude: number; at: number } | null>(null);
@@ -164,35 +166,63 @@ export function LiveTracker({
 
   if (tracked.length === 0) return null;
 
-  const names = tracked.map((item) => item.name).join(", ");
+  const count = tracked.length;
+  const collapsedLabel =
+    status === "denied"
+      ? "Location blocked"
+      : status === "error"
+        ? (detail ?? "Location error")
+        : status === "sharing"
+          ? "Sharing location"
+          : "Ready to share";
 
   return (
-    <div className="border-b border-border bg-emerald-500/10 px-4 py-3 md:px-6" role="status">
-      <p className="text-sm font-medium text-emerald-300">
-        {status === "sharing"
-          ? `Sharing live location for ${names}. Keep this page open until the owner accepts sign-in.`
-          : status === "denied"
-            ? "Live location is blocked until you allow GPS for this site."
-            : status === "error"
-              ? (detail ?? "Live location could not start.")
-              : `Ready to share live location for ${names}.`}
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Live GPS continues while kit is signed out, including after you request sign-in. Sharing
-        stops if you lock the phone, switch apps, or close this tab.
-      </p>
-      {status === "denied" || status === "error" ? (
-        <Button
-          className="mt-2"
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            lastSent.current = null;
-            setRetry((value) => value + 1);
-          }}
+    <div className="border-b border-emerald-500/20 bg-emerald-500/10" role="status">
+      <div className="flex items-center gap-2 px-4 py-1 md:px-6">
+        <button
+          type="button"
+          className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((open) => !open)}
         >
-          Try again
-        </Button>
+          <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-emerald-800 dark:text-emerald-300">
+            <span
+              className={cn(
+                "h-2 w-2 shrink-0 rounded-full",
+                status === "sharing" ? "bg-emerald-500" : "bg-amber-500",
+              )}
+              aria-hidden
+            />
+            <span className="min-w-0 truncate">
+              {`${collapsedLabel} · ${count} item${count === 1 ? "" : "s"}`}
+            </span>
+          </span>
+          <span className="shrink-0 text-xs font-medium text-emerald-800/80 dark:text-emerald-300/80">
+            Keep page open
+          </span>
+        </button>
+        {status === "denied" || status === "error" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            onClick={() => {
+              lastSent.current = null;
+              setRetry((value) => value + 1);
+            }}
+          >
+            Try again
+          </Button>
+        ) : null}
+      </div>
+      {expanded ? (
+        <div className="space-y-2 px-4 pb-3 md:px-6">
+          <p className="text-sm text-foreground">{tracked.map((item) => item.name).join(", ")}</p>
+          <p className="text-xs text-muted-foreground">
+            Sharing stops if you lock the phone, switch apps, or close this tab. Keep this page
+            open until the owner accepts the return.
+          </p>
+        </div>
       ) : null}
     </div>
   );

@@ -51,8 +51,8 @@ export function actionLabel(action: string) {
 }
 
 export function requestTypeLabel(type: string) {
-  if (type === "SIGN_OUT") return "Sign out";
-  if (type === "SIGN_IN") return "Sign in";
+  if (type === "SIGN_OUT") return "Check out";
+  if (type === "SIGN_IN") return "Return";
   if (type === "RENTAL_OUT") return "Send on rental";
   return type.replaceAll("_", " ");
 }
@@ -86,4 +86,67 @@ export function formatRelativeTime(value: Date | string | null | undefined) {
   if (hours < 24) return `${hours} hr ago`;
   const days = Math.round(hours / 24);
   return `${days}d ago`;
+}
+
+export function formatAgeLong(value: Date | string) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return `${Math.max(1, seconds)} sec`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+export function formatSinceWeekday(value: Date | string | null | undefined) {
+  if (!value) return null;
+  const date = typeof value === "string" ? new Date(value) : value;
+  const ageMs = Date.now() - date.getTime();
+  if (ageMs < 7 * 24 * 60 * 60 * 1000) {
+    return `since ${date.toLocaleDateString(undefined, { weekday: "short" })}`;
+  }
+  return `since ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+}
+
+export function holderFirstName(name: string | null | undefined) {
+  const trimmed = name?.trim();
+  if (!trimmed) return "Someone";
+  return trimmed.split(/\s+/)[0] ?? trimmed;
+}
+
+export type LocationFreshness =
+  | { kind: "live" }
+  | { kind: "recent"; label: string }
+  | { kind: "stale"; label: string };
+
+export function getLocationAgeMs(value: Date | string | null | undefined) {
+  if (!value) return null;
+  const date = typeof value === "string" ? new Date(value) : value;
+  const ms = Date.now() - date.getTime();
+  return Number.isFinite(ms) ? Math.max(0, ms) : null;
+}
+
+export function isLocationStale(
+  liveUpdatedAt: Date | string | null | undefined,
+  staleMs: number,
+) {
+  const age = getLocationAgeMs(liveUpdatedAt);
+  return age !== null && age > staleMs;
+}
+
+export function getLocationFreshness(
+  liveUpdatedAt: Date | string | null | undefined,
+  freshMs: number,
+  staleMs: number,
+): LocationFreshness | null {
+  const age = getLocationAgeMs(liveUpdatedAt);
+  if (age === null) return null;
+  if (age <= freshMs) return { kind: "live" };
+  const relative = formatRelativeTime(liveUpdatedAt);
+  if (age <= staleMs) {
+    return { kind: "recent", label: `Last seen ${relative}` };
+  }
+  return { kind: "stale", label: `Stale · ${formatAgeLong(liveUpdatedAt!)}` };
 }

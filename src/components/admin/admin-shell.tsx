@@ -143,7 +143,7 @@ export function AdminShell({
                 {
                   id: "pending-requests",
                   title: `${pendingRequests} pending request${pendingRequests === 1 ? "" : "s"}`,
-                  detail: "Open Requests to accept or decline workspace sign-out, sign-in, and rental moves.",
+                  detail: "Open Requests to accept or decline workspace check-out, return, and rental moves.",
                 },
               ]
             : []),

@@ -22,6 +22,7 @@ export async function getDashboardData(orgId: string) {
   const [equipment, activities, rentals, faults, pendingRequests, members, locations] = await Promise.all([
     prisma.equipment.findMany({
       where: { orgId },
+      include: { signedOutBy: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),
     prisma.activity.findMany({

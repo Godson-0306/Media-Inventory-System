@@ -13,7 +13,7 @@ export function AndroidDownloadCard({ compact = false }: { compact?: boolean }) 
         <div className="min-w-0">
           <p className="font-semibold">Android app</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Install on a phone for field sign-out and live location. No Play Store needed.
+            Install on a phone for field check-out and live location. No Play Store needed.
           </p>
         </div>
       </div>

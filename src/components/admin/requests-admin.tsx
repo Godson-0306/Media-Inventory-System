@@ -60,7 +60,7 @@ export function RequestsAdmin({ requests }: { requests: OperationRequestDTO[] })
       <div>
         <h1 className="text-3xl font-semibold">Requests</h1>
         <p className="text-sm text-muted-foreground">
-          Accept or decline workspace sign-out and sign-in requests.
+          Accept or decline workspace check-out and return requests.
         </p>
       </div>
       <div className="flex gap-2">
@@ -69,27 +69,27 @@ export function RequestsAdmin({ requests }: { requests: OperationRequestDTO[] })
           variant={tab === "signOut" ? "default" : "outline"}
           onClick={() => setTab("signOut")}
         >
-          Sign out{signOutCount > 0 ? ` (${signOutCount})` : ""}
+          Check out{signOutCount > 0 ? ` (${signOutCount})` : ""}
         </Button>
         <Button
           type="button"
           variant={tab === "signIn" ? "default" : "outline"}
           onClick={() => setTab("signIn")}
         >
-          Sign in{signInCount > 0 ? ` (${signInCount})` : ""}
+          Return{signInCount > 0 ? ` (${signInCount})` : ""}
         </Button>
       </div>
       <Card className="p-4">
         <h2 className="mb-4 font-medium">
-          {tab === "signOut" ? "Pending sign-out" : "Pending sign-in"}
+          {tab === "signOut" ? "Pending check-out" : "Pending return"}
         </h2>
         {queued.length === 0 ? (
           <EmptyState
-            title={tab === "signOut" ? "No pending sign-out requests" : "No pending sign-in requests"}
+            title={tab === "signOut" ? "No pending check-out requests" : "No pending return requests"}
             description={
               tab === "signOut"
-                ? "When someone requests a sign-out from the workspace, it will land here."
-                : "When someone who has kit out requests sign-in, it will land here."
+                ? "When someone requests a check-out from the workspace, it will land here."
+                : "When someone who has kit out requests a return, it will land here."
             }
           />
         ) : (

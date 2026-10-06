@@ -130,7 +130,7 @@ export async function approveOperationRequest(requestId: string) {
       return { error: "This asset can no longer be signed out" };
     }
     if (!request.locationLabel) {
-      return { error: "This sign-out request is missing a destination" };
+      return { error: "This check-out request is missing a destination" };
     }
     await applyApprovedSignOut({
       orgId: session.orgId,

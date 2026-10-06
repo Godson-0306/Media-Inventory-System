@@ -118,7 +118,7 @@ export function AnalyticsView({
         {mostUsed.length === 0 ? (
           <EmptyState
             title="No usage yet"
-            description="Sign-outs increment usage so operators can see which kits work the hardest."
+            description="Check-outs increment usage so operators can see which kits work the hardest."
           />
         ) : (
           <div className="space-y-2">

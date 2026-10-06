@@ -107,7 +107,7 @@ export function GooglePlacePreview({
         <p className="text-xs text-muted-foreground">Loading Google preview...</p>
       ) : null}
       {mode === "street" ? (
-        <p className="text-xs text-emerald-400">Street View at this pin. Confirm before you request sign out.</p>
+        <p className="text-xs text-emerald-400">Street View at this pin. Confirm before you request check out.</p>
       ) : null}
       {mode === "map" && value ? (
         <p className="text-xs text-amber-400">

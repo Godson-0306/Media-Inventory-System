@@ -30,8 +30,8 @@ export function LocationsAdmin({
       <div>
         <h1 className="text-3xl font-semibold">Locations</h1>
         <p className="text-sm text-muted-foreground">
-          Office and storage addresses for this company. Staff return kit here on sign-in. Job
-          destinations are entered on the map when they request a sign-out.
+          Office and storage addresses for this company. Staff return kit here. Job destinations
+          are entered on the map when they request a check-out.
         </p>
       </div>
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">

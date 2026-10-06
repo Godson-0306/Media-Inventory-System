@@ -230,7 +230,7 @@ export function LifeRecord({
             <p className="mt-2 text-sm text-muted-foreground">{equipment.locationAddress}</p>
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">
-              No map pin yet. After a sign-out, the destination marker is stored here. Live GPS
+              No map pin yet. After a check-out, the destination marker is stored here. Live GPS
               appears while the operator keeps the workspace open on their phone.
             </p>
           )}
@@ -240,7 +240,7 @@ export function LifeRecord({
           {historyPins.length === 0 ? (
             <EmptyState
               title="No mapped destinations yet"
-              description="Sign this asset out to a place and the pin history will appear here."
+              description="Check this asset out to a place and the pin history will appear here."
             />
           ) : (
             <PlaceMap pins={historyPins} />
@@ -253,7 +253,7 @@ export function LifeRecord({
         {timeline.length === 0 ? (
           <EmptyState
             title="No life events yet"
-            description="Sign-outs, sign-ins, faults, and rentals for this serial will collect here."
+            description="Check-outs, returns, faults, and rentals for this serial will collect here."
           />
         ) : (
           <div className="space-y-2">

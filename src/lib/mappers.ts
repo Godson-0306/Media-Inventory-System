@@ -1,7 +1,11 @@
 import type { Equipment, OperationRequest, User } from "@prisma/client";
 import type { EquipmentDTO, OperationRequestDTO } from "@/lib/types";
 
-export function toEquipmentDTO(item: Equipment): EquipmentDTO {
+type EquipmentWithHolder = Equipment & {
+  signedOutBy?: Pick<User, "name"> | null;
+};
+
+export function toEquipmentDTO(item: EquipmentWithHolder): EquipmentDTO {
   return {
     id: item.id,
     name: item.name,
@@ -10,7 +14,7 @@ export function toEquipmentDTO(item: Equipment): EquipmentDTO {
     model: item.model,
     category: item.category,
     status: item.status,
-    currentOperator: item.currentOperator,
+    currentOperator: item.currentOperator ?? item.signedOutBy?.name ?? null,
     useCount: item.useCount,
     conditionNotes: item.conditionNotes,
     signedOutAt: item.signedOutAt?.toISOString() ?? null,
