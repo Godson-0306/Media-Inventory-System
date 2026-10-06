@@ -1,5 +1,6 @@
 import { requireSignedInPage } from "@/lib/authz";
 import { isOrgActive } from "@/lib/org";
+import { connection } from "next/server";
 import { Logo } from "@/components/brand/logo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,12 @@ export const dynamic = "force-dynamic";
 
 export default async function BillingPage() {
   const session = await requireSignedInPage();
+  await connection();
   const active = isOrgActive(session);
   const trialEnded =
     session.subscriptionStatus === "TRIAL" &&
     session.trialEndsAt != null &&
+    // eslint-disable-next-line react-hooks/purity -- trial end is request-time on this dynamic page
     session.trialEndsAt.getTime() <= Date.now();
   const currentPlan = asPlanId(session.plan);
 

@@ -27,9 +27,11 @@ function metersBetween(
 export function LiveTracker({
   userId,
   equipment,
+  className,
 }: {
   userId: string;
   equipment: EquipmentDTO[];
+  className?: string;
 }) {
   const tracked = useMemo(
     () =>
@@ -40,7 +42,6 @@ export function LiveTracker({
   );
   const trackedIds = tracked.map((item) => item.id).sort().join(",");
   const trackedRef = useRef(tracked);
-  trackedRef.current = tracked;
 
   const [retry, setRetry] = useState(0);
   const [expanded, setExpanded] = useState(false);
@@ -49,15 +50,12 @@ export function LiveTracker({
   const lastSent = useRef<{ latitude: number; longitude: number; at: number } | null>(null);
 
   useEffect(() => {
+    trackedRef.current = tracked;
+  }, [tracked]);
+
+  useEffect(() => {
     if (!trackedIds) {
-      setStatus("idle");
-      setDetail(null);
       lastSent.current = null;
-      return;
-    }
-    if (!navigator.geolocation) {
-      setStatus("error");
-      setDetail("This browser cannot share GPS.");
       return;
     }
 
@@ -120,9 +118,14 @@ export function LiveTracker({
       setDetail(null);
     }
 
-    setStatus("sharing");
-    setDetail(null);
     void (async () => {
+      if (!navigator.geolocation) {
+        if (!cancelled) {
+          setStatus("error");
+          setDetail("This browser cannot share GPS.");
+        }
+        return;
+      }
       const allowed = await ensureNativeLocationPermission();
       if (cancelled) return;
       if (!allowed) {
@@ -130,6 +133,8 @@ export function LiveTracker({
         setDetail("Location permission is required to share a live pin.");
         return;
       }
+      setStatus("sharing");
+      setDetail(null);
       void requestWakeLock();
       watchId = navigator.geolocation.watchPosition(
         (position) => {
@@ -177,12 +182,17 @@ export function LiveTracker({
           : "Ready to share";
 
   return (
-    <div className="border-b border-emerald-500/20 bg-emerald-500/10" role="status">
+    <div
+      className={cn("border-b border-emerald-500/20 bg-emerald-50 dark:bg-emerald-950", className)}
+      role="status"
+    >
       <div className="flex items-center gap-2 px-4 py-1 md:px-6">
         <button
           type="button"
           className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-expanded={expanded}
+          aria-controls="live-sharing-details"
+          aria-label={expanded ? "Hide location sharing details" : "Show location sharing details"}
           onClick={() => setExpanded((open) => !open)}
         >
           <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-emerald-800 dark:text-emerald-300">
@@ -216,7 +226,7 @@ export function LiveTracker({
         ) : null}
       </div>
       {expanded ? (
-        <div className="space-y-2 px-4 pb-3 md:px-6">
+        <div id="live-sharing-details" className="space-y-2 px-4 pb-3 md:px-6">
           <p className="text-sm text-foreground">{tracked.map((item) => item.name).join(", ")}</p>
           <p className="text-xs text-muted-foreground">
             Sharing stops if you lock the phone, switch apps, or close this tab. Keep this page

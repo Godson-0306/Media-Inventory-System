@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import {
   Cable,
@@ -27,8 +28,8 @@ import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/empty-state";
 import { signOutEquipment, signInEquipment } from "@/actions/operations";
 import { LiveTracker } from "@/components/maps/live-tracker";
-import { PlacePicker } from "@/components/maps/place-picker";
 import { useRefreshWhile } from "@/hooks/use-refresh-while";
+import { useWorkspaceChrome } from "@/hooks/use-workspace-chrome";
 import {
   CATEGORIES,
   LIVE_LOCATION_FRESH_MS,
@@ -43,6 +44,26 @@ import {
   requestTypeLabel,
 } from "@/lib/utils";
 import type { EquipmentDTO, OperationRequestDTO, PlaceHit } from "@/lib/types";
+
+function useIsClient() {
+  return useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+}
+
+const PlacePicker = dynamic(
+  () => import("@/components/maps/place-picker").then((mod) => mod.PlacePicker),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[260px] items-center justify-center rounded-xl border border-border bg-muted/40 text-sm text-muted-foreground">
+        Loading map…
+      </div>
+    ),
+  },
+);
 
 type Props = {
   orgName: string;
@@ -77,6 +98,9 @@ export function WorkspaceConsole({
   const [destination, setDestination] = useState<PlaceHit | null>(null);
   const [checkOutOpen, setCheckOutOpen] = useState(false);
   const [isXl, setIsXl] = useState(false);
+  const { chromeRef, headerRef, scrolled, headerCollapsed } = useWorkspaceChrome({
+    pinned: filterOpen || checkOutOpen,
+  });
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1280px)");
@@ -103,20 +127,20 @@ export function WorkspaceConsole({
     return map;
   }, [pendingRequests]);
 
-  function canSelectAvailable(item: EquipmentDTO) {
+  const canSelectAvailable = useCallback((item: EquipmentDTO) => {
     return (
       (item.status === "ACTIVE" || item.status === "SIGNED_IN") &&
       !pendingByEquipment.has(item.id)
     );
-  }
+  }, [pendingByEquipment]);
 
-  function canSelectWithMe(item: EquipmentDTO) {
+  const canSelectWithMe = useCallback((item: EquipmentDTO) => {
     return (
       item.status === "SIGNED_OUT" &&
       item.signedOutByUserId === userId &&
       pendingByEquipment.get(item.id)?.type !== "SIGN_IN"
     );
-  }
+  }, [pendingByEquipment, userId]);
 
   useRefreshWhile(
     equipment.some((item) => item.status === "SIGNED_OUT") ||
@@ -159,20 +183,16 @@ export function WorkspaceConsole({
       equipment.filter(
         (item) => selectedIds.includes(item.id) && canSelectAvailable(item),
       ),
-    [equipment, selectedIds, pendingByEquipment],
+    [equipment, selectedIds, canSelectAvailable],
   );
   const returnSelected = useMemo(
     () =>
       equipment.filter((item) => selectedIds.includes(item.id) && canSelectWithMe(item)),
-    [equipment, selectedIds, pendingByEquipment, userId],
+    [equipment, selectedIds, canSelectWithMe],
   );
   const returnableWithMe = withMe.filter(canSelectWithMe);
   const filtersActive = category !== "ALL" || sort !== "name" || staleOnly;
   const actionBarVisible = checkoutSelected.length > 0 || returnSelected.length > 0;
-
-  useEffect(() => {
-    if (checkoutSelected.length === 0) setCheckOutOpen(false);
-  }, [checkoutSelected.length]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -205,7 +225,11 @@ export function WorkspaceConsole({
         equipmentIds: checkoutSelected.map((item) => item.id),
         operatorUserId: userId,
         locationLabel: destination.label,
-        locationAddress: destination.address,
+        // TODO: persist location notes in a dedicated column; for now they share locationAddress.
+        locationAddress: [destination.address, destination.note?.trim()]
+          .filter(Boolean)
+          .filter((part, index, all) => all.indexOf(part) === index)
+          .join(" · "),
         latitude: destination.latitude,
         longitude: destination.longitude,
       });
@@ -287,65 +311,87 @@ export function WorkspaceConsole({
   ) : null;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background">
-      <LiveTracker userId={userId} equipment={equipment} />
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-2 py-2 backdrop-blur sm:px-4 sm:py-3 md:px-6">
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-          <Logo src={logoUrl} alt={orgName} className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="h-11 pl-9"
-              placeholder="Search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              aria-label="Search equipment"
-            />
-          </div>
-          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-            <Button
-              type="button"
-              variant="outline"
-              className="relative h-11 min-w-11 px-2 sm:px-3"
-              onClick={() => setFilterOpen(true)}
-              aria-label="Filter"
-              aria-expanded={filterOpen}
-              aria-haspopup="dialog"
+    <div className="min-h-screen overflow-x-clip bg-background">
+      <div
+        ref={chromeRef}
+        className={cn(
+          "sticky top-0 z-40 bg-background",
+          scrolled ? "border-b border-border shadow-sm" : null,
+        )}
+      >
+        <LiveTracker userId={userId} equipment={equipment} />
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+            headerCollapsed ? "grid-rows-[0fr] sm:grid-rows-[1fr]" : "grid-rows-[1fr]",
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <header
+              ref={headerRef}
+              className="bg-background px-2 py-2 sm:px-4 sm:py-3 md:px-6"
+              aria-hidden={headerCollapsed || undefined}
+              inert={headerCollapsed ? true : undefined}
             >
-              <SlidersHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline">Filter</span>
-              {filtersActive ? (
-                <span
-                  className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary"
-                  aria-hidden
-                />
-              ) : null}
-              {filtersActive ? <span className="sr-only">Filters active</span> : null}
-            </Button>
-            <ThemeToggle className="h-11 w-11" />
-            {role === "OWNER" ? (
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-11 w-11"
-                onClick={() => router.push("/admin")}
-                aria-label="Admin"
-              >
-                <Shield className="h-4 w-4" />
-              </Button>
-            ) : null}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-11 w-11"
-              onClick={logout}
-              aria-label="Log out"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+                <Logo src={logoUrl} alt={orgName} className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
+                <div className="relative min-w-0 flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="h-11 scroll-mt-[var(--workspace-sticky-offset,0px)] pl-9"
+                    placeholder="Search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    aria-label="Search equipment"
+                  />
+                </div>
+                <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="relative h-11 min-w-11 px-2 sm:px-3"
+                    onClick={() => setFilterOpen(true)}
+                    aria-label="Filter"
+                    aria-expanded={filterOpen}
+                    aria-haspopup="dialog"
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                    <span className="hidden sm:inline">Filter</span>
+                    {filtersActive ? (
+                      <span
+                        className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary"
+                        aria-hidden
+                      />
+                    ) : null}
+                    {filtersActive ? <span className="sr-only">Filters active</span> : null}
+                  </Button>
+                  <ThemeToggle className="h-11 w-11" />
+                  {role === "OWNER" ? (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-11 w-11"
+                      onClick={() => router.push("/admin")}
+                      aria-label="Admin"
+                    >
+                      <Shield className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11"
+                    onClick={logout}
+                    aria-label="Log out"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </header>
           </div>
         </div>
-      </header>
+      </div>
 
       <div
         className={cn(
@@ -449,14 +495,18 @@ export function WorkspaceConsole({
           </div>
         </Card>
 
-        <Card className="hidden p-4 xl:block">
+        <Card className="mb-24 hidden p-4 xl:block">
           <h2 className="font-semibold">Check out</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Select available kit, pin the job, then send a request.
           </p>
           <div className="mt-4 space-y-4">
             {checkoutSelected.length > 0 ? (
-              checkOutBody
+              isXl ? checkOutBody : (
+                <p className="text-sm text-muted-foreground">
+                  Use Check out in the bar below to pin the job.
+                </p>
+              )
             ) : returnSelected.length > 0 ? (
               <EmptyState
                 title="Return selected kit"
@@ -473,7 +523,7 @@ export function WorkspaceConsole({
       </div>
 
       {actionBarVisible && !checkOutOpen ? (
-        <div className="fixed inset-x-3 bottom-3 z-50 rounded-xl border border-border bg-background/95 p-2 shadow-2xl sm:inset-x-4">
+        <div className="fixed inset-x-3 bottom-3 z-50 rounded-xl border border-border bg-background p-2 shadow-2xl sm:inset-x-4">
           <Button
             className="w-full"
             size="lg"
@@ -488,7 +538,7 @@ export function WorkspaceConsole({
       ) : null}
 
       {!isXl && checkOutOpen && checkoutSelected.length > 0 ? (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        <div className="fixed inset-0 z-[70] flex flex-col bg-background">
           <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div>
               <p className="font-semibold">Check out</p>
@@ -516,7 +566,7 @@ export function WorkspaceConsole({
       ) : null}
 
       {filterOpen ? (
-        <div className="fixed inset-0 z-[60]" role="presentation">
+        <div className="fixed inset-0 z-[70]" role="presentation">
           <button
             type="button"
             className="absolute inset-0 bg-black/50"
@@ -607,7 +657,10 @@ function EquipmentGroup({
   if (count === 0) return null;
   const headingId = `${title.toLowerCase().replace(/\s+/g, "-")}-heading`;
   return (
-    <section aria-labelledby={headingId}>
+    <section
+      aria-labelledby={headingId}
+      className="scroll-mt-[var(--workspace-sticky-offset,0px)]"
+    >
       <div className="mb-2 flex min-h-11 items-center justify-between gap-2">
         {collapsible ? (
           <button
@@ -658,10 +711,7 @@ function EquipmentRow({
   variant: "available" | "withMe" | "withOthers";
   onToggle: () => void;
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useIsClient();
   const freshness = mounted
     ? getLocationFreshness(
         item.liveUpdatedAt,
@@ -698,7 +748,7 @@ function EquipmentRow({
   );
 
   const className = cn(
-    "flex w-full min-h-11 min-w-0 items-start gap-3 rounded-xl border px-3 py-3 text-left",
+    "flex w-full min-h-11 min-w-0 scroll-mt-[var(--workspace-sticky-offset,0px)] items-start gap-3 rounded-xl border px-3 py-3 text-left",
     selected
       ? "border-primary bg-primary/10"
       : stale
@@ -781,7 +831,7 @@ function KitMeta({
         {isDroppedPin ? (
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3" aria-hidden />
-            Dropped pin
+            {item.locationLabel ?? "Dropped pin"}
           </span>
         ) : null}
       </span>

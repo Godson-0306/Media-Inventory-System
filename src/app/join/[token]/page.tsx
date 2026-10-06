@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { prisma } from "@/lib/db";
 import { Logo } from "@/components/brand/logo";
 import { JoinInviteForm } from "@/components/auth/join-invite-form";
@@ -15,12 +16,15 @@ export default async function JoinInvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  await connection();
   const invite = await prisma.orgInvite.findUnique({
     where: { token },
     include: { org: true },
   });
   if (!invite) notFound();
 
+  // Invite expiry is request-time on this dynamic page.
+  // eslint-disable-next-line react-hooks/purity -- Date.now is the request clock
   const expired = invite.expiresAt.getTime() <= Date.now();
   const used = Boolean(invite.usedAt);
   const branding = resolveBranding(invite.org);

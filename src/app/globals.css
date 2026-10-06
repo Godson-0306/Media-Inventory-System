@@ -48,11 +48,19 @@
   border-color: var(--border);
 }
 
+html {
+  scroll-padding-top: var(--workspace-sticky-offset, 0px);
+}
+
 html,
 body {
   background: var(--background);
   color: var(--foreground);
   min-height: 100%;
+}
+
+:focus-visible {
+  scroll-margin-top: var(--workspace-sticky-offset, 0px);
 }
 
 body {
@@ -62,4 +70,63 @@ body {
 .leaflet-container {
   z-index: 0;
   background: var(--background);
+  font-family: inherit;
+}
+
+.leaflet-control-zoom a,
+.leaflet-bar a {
+  background: var(--card);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.leaflet-control-zoom a:hover,
+.leaflet-bar a:hover {
+  background: var(--muted);
+}
+
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+  color: var(--muted-foreground);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.leaflet-container .aop-osm-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(0.7);
+}
+
+.aop-map-pin {
+  position: relative;
+  background: transparent;
+  border: none;
+}
+
+.aop-map-pin-mark {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 4px auto 0;
+  border-radius: 999px;
+  background: var(--primary);
+  border: 3px solid var(--primary-foreground);
+  box-shadow: 0 0 0 2px var(--primary), 0 8px 16px rgba(0, 0, 0, 0.35);
+}
+
+.aop-map-pin-mark::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 10px solid var(--primary);
 }

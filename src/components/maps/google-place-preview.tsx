@@ -17,12 +17,15 @@ export function GooglePlacePreview({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const onPickRef = useRef(onPick);
-  onPickRef.current = onPick;
   const [mode, setMode] = useState<"loading" | "street" | "map" | "error">("loading");
 
   const pinKey = value
     ? `${value.latitude},${value.longitude},${value.label}`
     : "empty";
+
+  useEffect(() => {
+    onPickRef.current = onPick;
+  }, [onPick]);
 
   useEffect(() => {
     let cancelled = false;

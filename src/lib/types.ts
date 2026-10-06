@@ -75,6 +75,8 @@ export type PlaceHit = {
   latitude: number;
   longitude: number;
   placeId?: string;
+  note?: string;
+  source?: "search" | "pin" | "geolocation" | "paste" | "recent";
 };
 
 export type PlaceSearchHit = {

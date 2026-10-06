@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   agentRules: false,
   allowedDevOrigins: ["127.0.0.1"],
-  transpilePackages: ["@capacitor/core", "@capacitor/geolocation"],
+  transpilePackages: ["@capacitor/core", "@capacitor/geolocation", "open-location-code"],
   async headers() {
     return [
       {
